@@ -1,5 +1,8 @@
 package org.example;
 
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.sql.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -14,21 +17,21 @@ import static java.sql.DriverManager.*;
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        // Configuração da base de dados
-        String url = "jdbc:postgresql://localhost:5432/postgres"; // Muda 'nomedabase' para o nome correto
-        String user = "postgres";  // Muda para o teu utilizador
-        String password = "2024";   // Muda para a tua senha
+        try {
+            // Criar a fila de URLs
+            IQueue queue = new QueueImpl();
 
-        // Conectar à base de dados
-        try (Connection conn = DriverManager.getConnection(url, user, password)) {
-            if (conn != null) {
-                System.out.println("Conexão com PostgreSQL estabelecida com sucesso!");
-            }
-        } catch (SQLException e) {
-            System.err.println("Erro ao conectar à base de dados:");
+
+            // Simulando a adição de URLs à fila
+            System.out.println("Adicionando URLs à fila...");
+            queue.addURL("https://www.example.com");
+            queue.addURL("https://www.google.com");
+            queue.addURL("https://www.github.com");
+
+
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        }
+    }
     }
