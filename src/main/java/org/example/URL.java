@@ -20,12 +20,6 @@ public class URL {
     }
 
     /**
-     * Returns the URL as a string representation.
-     *
-     * @return The URL string.
-     */
-
-    /**
      * Returns the stored URL as a string.
      *
      * @return The valid URL string.
