@@ -1,97 +1,71 @@
 package org.example;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.util.List;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.rmi.Naming;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import java.util.Properties;
+import java.util.Queue;
 
 public class Downloader extends Thread {
-    private IQueue queue;
+    private static Remote queue;
+    private IQueue queueService;
 
-    public Downloader(IQueue queue) {
-        this.queue = queue;
+    public Downloader(IQueue queueService) {
+        this.queueService = queueService;
     }
 
     @Override
     public void run() {
         try {
             while (true) {
-                // Pede um URL à queue
-                String url = queue.getURL();
+                String url = queueService.getURL();
                 if (url == null) {
-                    System.out.println("Downloader: Nenhum URL na queue. A terminar...");
-                    break;
+                    System.out.println(Thread.currentThread().getName() + " - Nenhum URL disponível, a aguardar...");
+                    Thread.sleep(2000);
+                } else {
+                    System.out.println(Thread.currentThread().getName() + " - Processando URL: " + url);
+                    // Aqui podes adicionar código para fazer download da página
                 }
-
-                System.out.println("Downloader: Processando " + url);
-                processURL(url);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void processURL(String url) {
-        try {
-            // Fazer o download da página com JSoup
-            Document doc = Jsoup.connect(url).get();
-            String titulo = doc.title();
-            String citacao = titulo; // Pode ser alterado para uma descrição mais específica
-
-            // Guarda o URL nos barrels
-            DatabaseManager.addURL(url, titulo, citacao);
-
-            // Extrai e guarda as palavras
-            String[] words = doc.text().toLowerCase().split("\\W+");
-            for (String word : words) {
-                if (word.length() > 2) { // Evita palavras muito curtas
-                    DatabaseManager.addWord(word);
-                    DatabaseManager.addWordURL(word, url);
-                }
-            }
-
-            // Extrai e guarda os links encontrados
-            Elements links = doc.select("a[href]");
-            for (Element link : links) {
-                String toURL = link.absUrl("href");
-                if (!toURL.isEmpty()) {
-                    DatabaseManager.addLink(url, toURL);
-                    queue.addURL(toURL); // Adiciona novos URLs à queue para serem processados
-                }
-            }
-
-            System.out.println("Downloader: Processado com sucesso -> " + url);
-
-        } catch (Exception e) {
-            System.out.println("Erro ao processar URL: " + url);
             e.printStackTrace();
         }
     }
 
     public static void main(String[] args) {
+        Properties config = new Properties();
+
+        // Carregar config.properties
+        try (FileInputStream inputStream = new FileInputStream("src/main/java/org/example/config.properties")) {
+            config.load(inputStream);
+            System.out.println("✅ Configurações carregadas com sucesso.");
+        } catch (IOException e) {
+            System.err.println("❌ Erro ao carregar config.properties:");
+            e.printStackTrace();
+            return;
+        }
+
+        // Obter URL do serviço da Queue
+        String queueUrl = config.getProperty("queue.rmi.url");
+        if (queueUrl == null) {
+            System.err.println("❌ Erro: queue.rmi.url não encontrado no config.properties.");
+            return;
+        }
+
         try {
-            // Inicia o servidor RMI da Queue
-            IQueue queue = new QueueImpl();
-            Registry registry = LocateRegistry.createRegistry(1099);
-            registry.rebind("QueueService", queue);
-            System.out.println("✅ Servidor RMI da Queue iniciado.");
+            // Conectar ao serviço da Queue via RMI
+            IQueue queueService = (IQueue) Naming.lookup(queueUrl);
+            System.out.println("✅ Ligação RMI à Queue estabelecida com sucesso.");
 
-            // Adiciona algumas URLs de teste
-            queue.addURL("https://example.com");
-            queue.addURL("https://google.com");
-            queue.addURL("https://wikipedia.org");
-            System.out.println("✅ URLs adicionadas à Queue.");
-
-            // Criar e iniciar Downloaders (Threads)
-            int numDownloaders = 3; // Quantidade de Downloaders
-            for (int i = 0; i < numDownloaders; i++) {
-                new Downloader(queue).start();
+            // Criar múltiplos Downloaders (threads) para processar URLs
+            for (int i = 0; i < 5; i++) {
+                new Downloader(queueService).start();
             }
 
         } catch (Exception e) {
+            System.err.println("❌ Erro ao ligar ao serviço RMI da Queue:");
             e.printStackTrace();
         }
     }
