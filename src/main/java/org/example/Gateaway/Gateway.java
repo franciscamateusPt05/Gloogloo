@@ -124,7 +124,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     public SearchResult getSearch(String search) throws RemoteException {
     if (activeBarrels.isEmpty()) {
-        System.out.println("No barrels available for search.");
+        System.err.println("No barrels available for search.");
         return new SearchResult(search, List.of()); 
     }
     
