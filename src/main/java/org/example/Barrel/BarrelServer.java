@@ -1,7 +1,5 @@
 package org.example.Barrel;
 
-import org.example.Barrel.BarrelImpl;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.rmi.Naming;

@@ -1,6 +1,8 @@
 package org.example.Gateaway;
 
 import org.example.SearchResult;
+import org.example.Statistics.IStatistics;
+import org.example.Statistics.SystemStatistics;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -37,9 +39,17 @@ public interface IGateway extends Remote {
      */
     public SearchResult getConnections(String url) throws RemoteException;
 
-    //PROVAVELMENTE NECESSÁRIO: VERIFICAR
-    //public void SubscribeBarrel(IBarrel barrel, String barrelUID) throws RemoteException;
+    /**
+     * Retrieves the latest system statistics.
+     * @return The latest statistics.
+     * @throws RemoteException If an RMI error occurs.
+     */
+    public SystemStatistics getStatistics() throws RemoteException;
 
-    // Verificar como podemos fazer esta parte das estatísticas
-    //public AdministrationPage getAdministrationPage() throws RemoteException;
+    /**
+     * Registers a client to receive live statistics updates.
+     * @param listener The listener that will receive updates.
+     * @throws RemoteException If an RMI error occurs.
+     */
+    public void registerStatisticsListener(IStatistics listener) throws RemoteException;
 }

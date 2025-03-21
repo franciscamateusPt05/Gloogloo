@@ -9,6 +9,8 @@ import java.util.*;
 
 import org.example.Barrel.*;
 import org.example.Queue.*;
+import org.example.Statistics.IStatistics;
+import org.example.Statistics.SystemStatistics;
 import org.example.SearchResult;
 
 /**
@@ -29,6 +31,10 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
     private static final String BARREL_CONFIG_FILE = "src/main/java/org/example/Properties/barrel.properties";
 
+    private static final long serialVersionUID = 1L;
+    private final List<IStatistics> listeners = new ArrayList<>();
+    private SystemStatistics currentStats;
+
     /**
      * Constructs a new Gateway instance.
      *
@@ -36,6 +42,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
      */
     public Gateway() throws RemoteException {
         super();
+        this.currentStats = new SystemStatistics(new ArrayList<>(), new HashMap<>(), new HashMap<>());
         try {
             // Load properties
             Properties queueProp = loadProperties(QUEUE_CONFIG_FILE);
@@ -108,14 +115,16 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
     public void insertURL(String url) throws RemoteException {
-        String url_queue = new String(url);
-        queue.addURL(url_queue);
-        System.out.println("URL inserted successfully.");
+        if (queue == null) { 
+            throw new RemoteException("Queue service is not initialized.");
+        }
+        queue.addURL(url);
+        System.out.println("URL inserted!");
     }
 
     public SearchResult getSearch(String search) throws RemoteException {
     if (activeBarrels.isEmpty()) {
-        System.err.println("No barrels available for search.");
+        System.out.println("No barrels available for search.");
         return new SearchResult(search, List.of()); 
     }
     
@@ -135,5 +144,23 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         IBarrel selectedBarrel = activeBarrels.get(random.nextInt(activeBarrels.size()));
         List<String> connections = selectedBarrel.getConnections(url);
         return new SearchResult(url, connections);
+    }
+
+    public synchronized SystemStatistics getStatistics() throws RemoteException {
+        return currentStats;
+    }
+
+    public synchronized void registerStatisticsListener(IStatistics listener) throws RemoteException {
+        listeners.add(listener);
+        listener.updateStatistics(currentStats);
+    }
+    public synchronized void updateStatistics(List<String> topSearches, HashMap<String, Integer> barrelSizes, HashMap<String, Double> responseTimes) throws RemoteException {
+        this.currentStats = new SystemStatistics(topSearches, barrelSizes, responseTimes);
+        notifyListeners();   
+    }
+    private void notifyListeners() throws RemoteException {
+        for (IStatistics listener : listeners) {
+            listener.updateStatistics(currentStats);
+        }
     }
 }

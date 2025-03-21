@@ -2,8 +2,6 @@ package org.example;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -22,6 +20,9 @@ public class Main {
 
     /** Line separator used for menu display */
     private static final String LINE_BREAK = "=".repeat(30);
+
+    /** To receive the Statistics from Gateway */
+    private static final long serialVersionUID = 1L;
 
     /** Path to the configuration file */
     private static final String CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
@@ -73,13 +74,14 @@ public class Main {
             int menuOption = showMenu();
             if (menuOption == 0) {
                 disconnect();
+                running = false;
                 break;
             }
 
             try {
                 handleMenuOption(menuOption);
             } catch (RemoteException e) {
-                System.err.println("RMI error: " + e.getMessage());
+                System.out.println("RMI error: " + e.getMessage());
             }
         }
     }
@@ -152,8 +154,8 @@ public class Main {
                 consultURLConnections();
                 break;
             case 4:
-                System.out.println(LINE_BREAK + "\nOpening administrative page");
-                // TODO: Implement administration page retrieval
+                System.out.println(LINE_BREAK + "\nOpening administrative page:\n");
+                System.out.println(gateway.getStatistics());
                 break;
             default:
                 System.out.println("Invalid option.");
@@ -258,5 +260,6 @@ public class Main {
         System.out.println(LINE_BREAK);
         scanner.close();
         System.out.println("Client disconnected successfully.");
+        System.exit(0);
     }
 }
