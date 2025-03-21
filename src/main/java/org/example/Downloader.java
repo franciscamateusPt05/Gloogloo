@@ -135,7 +135,7 @@ public class Downloader extends Thread {
             Map<String, Integer> keywords = normalizeWords(bodyText);
 
             // Extrair e filtrar citações válidas
-            Element citação = doc.select("blockquote, q"); // Pode incluir <q> para citações curtas
+            Elements citação = doc.select("blockquote, q"); // Pode incluir <q> para citações curtas
 
 
             // Extrair todas as URLs do conteúdo

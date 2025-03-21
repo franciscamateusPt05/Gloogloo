@@ -23,5 +23,14 @@ public interface IBarrel extends Remote {
      */
     List<String> search(String word) throws RemoteException;
 
+    /**
+     * Searches for all URL connections of the given URL.
+     * 
+     * @param url The URL given to search for its connections
+     * @return the search results as a SearchResult object
+     * @throws RemoteException if a remote error occurs during the search
+     */
+    List<String> getConnections (String url) throws RemoteException;
+
 }
 

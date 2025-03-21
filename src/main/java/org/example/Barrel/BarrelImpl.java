@@ -106,4 +106,9 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             throw new RemoteException("Erro ao fechar a conexão", e);
         }
     }
+
+    @Override
+    public List<String> getConnections(String url) throws RemoteException {
+        throw new UnsupportedOperationException("Unimplemented method 'getConnections'");
+    }
 }

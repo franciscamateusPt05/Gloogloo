@@ -1,78 +1,139 @@
 package org.example.Gateaway;
 
-import org.example.Queue.IQueue;
-import org.example.SearchResult;
-
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URL;
-import java.rmi.*;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Properties;
+import java.util.*;
 
+import org.example.Barrel.*;
+import org.example.Queue.*;
+import org.example.SearchResult;
+
+/**
+ * The Gateway class manages communication between clients, the Queue, and active Barrels.
+ */
 public class Gateway extends UnicastRemoteObject implements IGateway {
-    private static final String CONFIG_FILE = "config.properties";
-    
-    private static IQueue queue;
-    private static IGateway gateway;
 
-    protected Gateway() throws RemoteException {
+    /** List of active Barrels */
+    private List<IBarrel> activeBarrels = new ArrayList<>();
+
+    /** Reference to the Queue service */
+    private IQueue queue;
+
+    /** Random instance for selecting barrels */
+    private Random random = new Random();
+
+    /** Paths to the properties files */
+    private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
+    private static final String BARREL_CONFIG_FILE = "src/main/java/org/example/Properties/barrel.properties";
+
+    /**
+     * Constructs a new Gateway instance.
+     *
+     * @throws RemoteException If an RMI error occurs.
+     */
+    public Gateway() throws RemoteException {
         super();
-    }
-
-    public static void main(String[] args) {
         try {
-            Properties properties = loadProperties();
-            gateway = new Gateway();
-            Registry registry = LocateRegistry.createRegistry(1099);
-            registry.rebind("GATEWAY", gateway);
-            queue = (IQueue) Naming.lookup(properties.getProperty("queue.rmi.url"));
+            // Load properties
+            Properties queueProp = loadProperties(QUEUE_CONFIG_FILE);
+            Properties barrelProp = loadProperties(BARREL_CONFIG_FILE);
 
-            System.out.println("Gateway started at " + gateway);
-        } catch (IOException e) {
-            System.err.println("Failed to load properties file: " + e.getMessage());
-        } catch (NotBoundException e) {
-            System.err.println("Error connecting to remote services: " + e.getMessage());
+            // Connect to Queue
+            String queueUrl = getRmiUrl(queueProp, "queue");
+            queue = (IQueue) Naming.lookup(queueUrl);
+            System.out.println("Connected to Queue: " + queueUrl);
+
+            // Check available barrels
+            checkActiveBarrels(barrelProp);
+
+            if (activeBarrels.isEmpty()) {
+                System.err.println("No active barrels available!");
+            } else {
+                System.out.println("Active barrels connected: " + activeBarrels.size());
+            }
+
+        } catch (Exception e) {
+            System.err.println("Failed to connect to Queue or Barrels: " + e.getMessage());
         }
     }
 
-    private static Properties loadProperties() throws IOException {
-        Properties properties = new Properties();
-        try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
-            properties.load(fis);
+    /**
+     * Loads properties from a file.
+     *
+     * @param filePath The path to the properties file.
+     * @return A Properties object with the loaded values.
+     * @throws IOException If an error occurs while reading the file.
+     */
+    private Properties loadProperties(String filePath) throws IOException {
+        Properties prop = new Properties();
+        try (FileInputStream input = new FileInputStream(filePath)) {
+            prop.load(input);
         }
-        return properties;
+        return prop;
     }
 
-    public void insertURL(URL url) throws RemoteException {
-        if (queue != null) 
-            //queue.addUrl(url);
-            System.out.print("Experiencia");
+    /**
+     * Generates an RMI URL from properties for a given prefix.
+     *
+     * @param prop   The properties object.
+     * @param prefix The prefix of the service (e.g., "barrel1", "queue").
+     * @return The complete RMI URL.
+     */
+    private String getRmiUrl(Properties prop, String prefix) {
+        String host = prop.getProperty(prefix + ".rmi.host", "localhost");
+        String port = prop.getProperty(prefix + ".rmi.port");
+        String service = prop.getProperty(prefix + ".rmi.service_name");
+        return "rmi://" + host + ":" + port + "/" + service;
+    }
+
+    /**
+     * Checks which barrels are active and updates the list.
+     */
+    private void checkActiveBarrels(Properties prop) {
+        for (int i = 1; i <= 2; i++) {
+            String barrelPrefix = "barrel" + i;
+            String barrelUrl = getRmiUrl(prop, barrelPrefix);
+
+            try {
+                IBarrel barrel = (IBarrel) Naming.lookup(barrelUrl);
+                activeBarrels.add(barrel);
+                System.out.println("Connected to active barrel: " + barrelUrl);
+            } catch (Exception e) {
+                System.err.println("Barrel not available: " + barrelUrl);
+            }
+        }
+    }
+
+    public void insertURL(String url) throws RemoteException {
+        String url_queue = new String(url);
+        queue.addURL(url_queue);
+        System.out.println("URL inserted successfully.");
     }
 
     public SearchResult getSearch(String search) throws RemoteException {
-        return new SearchResult();
+    if (activeBarrels.isEmpty()) {
+        System.err.println("No barrels available for search.");
+        return new SearchResult(search, List.of()); 
+    }
+    
+    IBarrel selectedBarrel = activeBarrels.get(random.nextInt(activeBarrels.size()));
+    List<String> results = selectedBarrel.search(search);
+
+    return new SearchResult(search, results);
     }
 
-    public SearchResult getConnections(URL url) throws RemoteException {
-        return new SearchResult();
-    }
 
-
-    //IMPLEMENTAÇÃO
-
-
-    @Override
-    public void insertURL(org.example.URL url) throws RemoteException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'insertURL'");
-    }
-
-    @Override
-    public SearchResult getConnections(org.example.URL url) throws RemoteException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getConnections'");
+    public SearchResult getConnections(String url) throws RemoteException {
+        if (activeBarrels.isEmpty()) {
+            System.err.println("No barrels available for connections.");
+            return new SearchResult(url, List.of()); // Return empty result instead of null
+        }
+    
+        IBarrel selectedBarrel = activeBarrels.get(random.nextInt(activeBarrels.size()));
+        List<String> connections = selectedBarrel.getConnections(url);
+        return new SearchResult(url, connections);
     }
 }

@@ -1,7 +1,6 @@
 package org.example.Gateaway;
 
 import org.example.SearchResult;
-import org.example.URL;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -18,7 +17,7 @@ public interface IGateway extends Remote {
      * @param url the URL to be inserted
      * @throws RemoteException if a remote communication error occurs
      */
-    public void insertURL(URL url) throws RemoteException;
+    public void insertURL(String url) throws RemoteException;
 
     /**
      * Searches for a specified terms and returns the searched results.
@@ -36,7 +35,7 @@ public interface IGateway extends Remote {
      * @return the search results as a SearchResult object
      * @throws RemoteException if a remote error occurs during the search
      */
-    public SearchResult getConnections(URL url) throws RemoteException;
+    public SearchResult getConnections(String url) throws RemoteException;
 
     //PROVAVELMENTE NECESSÁRIO: VERIFICAR
     //public void SubscribeBarrel(IBarrel barrel, String barrelUID) throws RemoteException;
