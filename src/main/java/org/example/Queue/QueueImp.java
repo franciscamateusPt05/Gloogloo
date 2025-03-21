@@ -30,11 +30,11 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         super();
         this.queue = new LinkedList<>();
         this.urlSet = new HashSet<>();
-        loadQueueFromFile();
     }
 
     @Override
     public synchronized String getURL() throws RemoteException {
+        loadQueueFromFile();
         while (queue.isEmpty()) {
             try {
                 wait(); // Aguarda até que uma URL seja adicionada à fila
@@ -51,12 +51,15 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
 
     @Override
     public synchronized void addURL(String url) throws RemoteException {
-        if (!urlSet.contains(url)) {
+        loadQueueFromFile();
+        if (!urlSet.contains(url) && this.queue.size() < MAX_SIZE) {
             queue.add(url);
             urlSet.add(url);
             saveQueueToFile();
             notifyAll(); // Notifica as threads que estão à espera de uma URL
         }
+
+
     }
 
 
@@ -65,7 +68,7 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (!urlSet.contains(line)) {
-                    queue.offer(line);
+                    this.queue.add(line);
                     urlSet.add(line);
                 }
             }
