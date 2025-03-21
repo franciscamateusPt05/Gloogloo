@@ -1,8 +1,10 @@
-package org.example;
+package org.example.Gateaway;
+
+import org.example.Queue.IQueue;
+import org.example.SearchResult;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
@@ -31,8 +33,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.out.println("Gateway started at " + gateway);
         } catch (IOException e) {
             System.err.println("Failed to load properties file: " + e.getMessage());
-        } catch (RemoteException e) {
-            System.err.println("RemoteException: " + e.getMessage());
         } catch (NotBoundException e) {
             System.err.println("Error connecting to remote services: " + e.getMessage());
         }
@@ -48,7 +48,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     public void insertURL(URL url) throws RemoteException {
         if (queue != null) 
-            queue.addUrl(url);
+            //queue.addUrl(url);
+            System.out.print("Experiencia");
     }
 
     public SearchResult getSearch(String search) throws RemoteException {

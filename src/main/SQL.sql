@@ -21,6 +21,7 @@ CREATE TABLE urls (
 CREATE TABLE word_url (
                           word TEXT NOT NULL,
                           url TEXT NOT NULL,
+                          frequency INTEGER not null,
                           PRIMARY KEY (word, url),
                           FOREIGN KEY (word) REFERENCES word(word) ON DELETE CASCADE,
                           FOREIGN KEY (url) REFERENCES urls(url) ON DELETE CASCADE
@@ -77,6 +78,7 @@ CREATE TABLE urls (
 CREATE TABLE word_url (
                           word TEXT NOT NULL,
                           url TEXT NOT NULL,
+                          frequency INTEGER not null,
                           PRIMARY KEY (word, url),
                           FOREIGN KEY (word) REFERENCES word(word) ON DELETE CASCADE,
                           FOREIGN KEY (url) REFERENCES urls(url) ON DELETE CASCADE

@@ -1,4 +1,7 @@
-package org.example;
+package org.example.Gateaway;
+
+import org.example.SearchResult;
+import org.example.URL;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
