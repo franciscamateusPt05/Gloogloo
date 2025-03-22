@@ -18,8 +18,8 @@ import org.example.SearchResult;
  */
 public class Gateway extends UnicastRemoteObject implements IGateway {
 
-    /** List of active Barrels */
-    private List<IBarrel> activeBarrels = new ArrayList<>();
+    /** Reference to the selected Barrel */
+    private IBarrel selectedBarrel;
 
     /** Reference to the Queue service */
     private IQueue queue;
@@ -56,12 +56,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             // Check available barrels
             checkActiveBarrels(barrelProp);
 
-            if (activeBarrels.isEmpty()) {
-                System.err.println("No active barrels available!");
-            } else {
-                System.out.println("Active barrels connected: " + activeBarrels.size());
-            }
-
         } catch (Exception e) {
             System.err.println("Failed to connect to Queue or Barrels: " + e.getMessage());
         }
@@ -97,53 +91,67 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
     /**
-     * Checks which barrels are active and updates the list.
+     * Checks which barrels are active and connects to one.
      */
     private void checkActiveBarrels(Properties prop) {
+        List<IBarrel> availableBarrels = new ArrayList<>();
+
         for (int i = 1; i <= 2; i++) {
             String barrelPrefix = "barrel" + i;
             String barrelUrl = getRmiUrl(prop, barrelPrefix);
 
             try {
                 IBarrel barrel = (IBarrel) Naming.lookup(barrelUrl);
-                activeBarrels.add(barrel);
+                availableBarrels.add(barrel);
                 System.out.println("Connected to active barrel: " + barrelUrl);
             } catch (Exception e) {
                 System.err.println("Barrel not available: " + barrelUrl);
             }
         }
+
+        if (availableBarrels.isEmpty()) {
+            System.err.println("No active barrels available!");
+        } else {
+            selectedBarrel = availableBarrels.get(random.nextInt(availableBarrels.size()));
+            System.out.println("Connected to barrel: " + selectedBarrel);
+        }
     }
 
     public void insertURL(String url) throws RemoteException {
-        if (queue == null) { 
+        if (queue == null) {
             throw new RemoteException("Queue service is not initialized.");
         }
         queue.addURL(url);
         System.out.println("URL inserted!");
     }
 
-    public SearchResult getSearch(String search) throws RemoteException {
-    if (activeBarrels.isEmpty()) {
-        System.err.println("No barrels available for search.");
-        return new SearchResult(search, List.of()); 
-    }
-    
-    IBarrel selectedBarrel = activeBarrels.get(random.nextInt(activeBarrels.size()));
-    List<String> results = selectedBarrel.search(search);
+    public List<SearchResult> search(String search) throws RemoteException {
+        if (selectedBarrel == null) {
+            System.err.println("No barrel selected for search.");
+            return new ArrayList<>();
+        }
 
-    return new SearchResult(search, results);
+        try {
+            return selectedBarrel.search(search);
+        } catch (RemoteException e) {
+            System.err.println("Error during search: " + e.getMessage());
+            return new ArrayList<>();
+        }
     }
-
 
     public SearchResult getConnections(String url) throws RemoteException {
-        if (activeBarrels.isEmpty()) {
-            System.err.println("No barrels available for connections.");
-            return new SearchResult(url, List.of()); // Return empty result instead of null
+        if (selectedBarrel == null) {
+            System.err.println("No barrel selected for getting connections.");
+            return new SearchResult(url, List.of());
         }
-    
-        IBarrel selectedBarrel = activeBarrels.get(random.nextInt(activeBarrels.size()));
-        List<String> connections = selectedBarrel.getConnections(url);
-        return new SearchResult(url, connections);
+
+        try {
+            SearchResult connections = selectedBarrel.getConnections(url);
+            return connections;
+        } catch (RemoteException e) {
+            System.err.println("Error getting connections: " + e.getMessage());
+            return new SearchResult(url, List.of());
+        }
     }
 
     public synchronized SystemStatistics getStatistics() throws RemoteException {
@@ -154,13 +162,21 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         listeners.add(listener);
         listener.updateStatistics(currentStats);
     }
+
     public synchronized void updateStatistics(List<String> topSearches, HashMap<String, Integer> barrelSizes, HashMap<String, Double> responseTimes) throws RemoteException {
         this.currentStats = new SystemStatistics(topSearches, barrelSizes, responseTimes);
-        notifyListeners();   
+        notifyListeners();
     }
+
     private void notifyListeners() throws RemoteException {
+        System.out.println("Notifying " + listeners.size() + " listeners.");
         for (IStatistics listener : listeners) {
-            listener.updateStatistics(currentStats);
+            try {
+                listener.updateStatistics(currentStats);
+                System.out.println("Listener notified.");
+            } catch (RemoteException e) {
+                System.err.println("Failed to notify a listener: " + e.getMessage());
+            }
         }
     }
 }

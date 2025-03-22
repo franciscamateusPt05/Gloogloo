@@ -28,7 +28,7 @@ public class SearchResult implements Serializable {
     /**
      * Constructs a SearchResult object for a query with multiple results.
      *
-     * @param query The search query.
+     * @param query The search URL.
      * @param urls  The list of URLs that match the query.
      */
     public SearchResult(String query, List<String> urls) {

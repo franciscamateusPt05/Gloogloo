@@ -12,6 +12,8 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.example.SearchResult;
+
 public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private static final Logger logger = Logger.getLogger(BarrelImpl.class.getName());
     private Connection conn;
@@ -141,20 +143,13 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     // Método para procurar uma palavra no índice e retornar as URLs associadas
     @Override
-    public List<String> search(String word) throws RemoteException {
-        List<String> urls = new ArrayList<>();
+    public List<SearchResult> search(String word) throws RemoteException {
+
+        // MODIFICAR
+
+        List<SearchResult> urls = new ArrayList<SearchResult>();
         String query = "SELECT url FROM word_url WHERE word = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setString(1, word);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    urls.add(rs.getString("url"));
-                }
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Erro ao buscar palavra no índice: " + e.getMessage());
-            throw new RemoteException("Erro ao buscar palavra no índice", e);
-        }
+       
         return urls;
     }
 
@@ -171,7 +166,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     }
 
     @Override
-    public List<String> getConnections(String url) throws RemoteException {
+    public SearchResult getConnections(String url) throws RemoteException {
         throw new UnsupportedOperationException("Unimplemented method 'getConnections'");
     }
 
