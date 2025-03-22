@@ -10,6 +10,7 @@ public interface IBarrel extends Remote {
      * Adiciona uma palavra ao índice do Barrel associada a uma URL.
      *
      * @param url URL onde a palavra foi encontrada.
+     * @return
      * @throws RemoteException Se ocorrer um erro na comunicação RMI.
      */
     boolean addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException;
@@ -35,10 +36,15 @@ public interface IBarrel extends Remote {
 
     boolean containsUrl(String url) throws RemoteException;
 
-    void setOutrosBarrel(IBarrel outrosBarrel) throws RemoteException;
 
-    void notificar() throws RemoteException;
+    IBarrel getOutroBarrel() throws RemoteException;
 
-    void setNotificação(boolean notificação) throws RemoteException;
+    void setOutroBarrel(IBarrel outroBarrel) throws RemoteException;
+
+    boolean FinalizarOpe() throws Exception;
+
+    boolean isSucess() throws RemoteException;
+
+    void setSucess(boolean sucess) throws RemoteException;
 }
 

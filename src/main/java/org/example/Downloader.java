@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.sql.SQLException;
 import java.text.Normalizer;
 import java.util.*;
 import java.util.logging.Level;
@@ -46,8 +47,9 @@ public class Downloader extends Thread {
             IBarrel barrel1 = (IBarrel) Naming.lookup(barrel1URL);
             IBarrel barrel2 = (IBarrel) Naming.lookup(barrel2URL);
 
-            barrel1.setOutrosBarrel(barrel2);
-            barrel2.setOutrosBarrel(barrel1);
+            barrel1.setOutroBarrel(barrel2);
+            barrel2.setOutroBarrel(barrel1);
+
 
             barrels = Arrays.asList(barrel1, barrel2);
 
@@ -143,37 +145,57 @@ public class Downloader extends Thread {
 
                 // Extrair todas as URLs do conteúdo
                 List<String> listaLinks = doc.select("a[href]").eachAttr("abs:href").stream()
-                        .distinct()
                         .filter(link -> link.startsWith("http") && // Garante que é um URL válido
                                 !link.contains("#") && // Exclui links com fragmentos
                                 !link.contains("sessionid") && // Exclui links com parâmetros de sessão
                                 !link.contains("login") && // Exclui links de login
                                 !link.contains("404") && // Exclui links de páginas de erro
-                                !link.contains("utm_")) // Exclui links de rastreamento
-                        .toList();
+                                !link.contains("utm_")).distinct().toList();
 
+
+                List<Thread> threads = new ArrayList<>();
+                List<Boolean> results = Collections.synchronizedList(new ArrayList<>());
 
                 for (IBarrel barrel : this.barrels) {
-                    sucesso = barrel.addToIndex(palavras, url, listaLinks, title, citacao);
+                    Thread thread = new Thread(() -> {
+                        try {
+                            boolean resp = barrel.addToIndex(palavras, url, listaLinks, title, citacao);
+                            results.add(resp);
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+                    });
+
+                    threads.add(thread);
+                    thread.start();
+                }
+                for (Thread thread : threads) {
+                    try {
+                        thread.join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
 
-                if (sucesso) {
-                    barrelc = this.barrels.get(random.nextInt(2));
-
+                if (results.get(0) && results.get(1)) {
                     for (String link : listaLinks) {
-                        if (!barrelc.containsUrl(link)) {
+                        if (!this.barrels.get(random.nextInt(2)).containsUrl(link)) {
                             this.queue.addURL(link);
                         }
                     }
-                    System.out.println("Sucesso");
+                } else {
+                    this.queue.addURL(url);
                 }
 
-                if (!sucesso) {this.queue.addURL(url);
-                    System.out.println("Não Sucesso");
+                for (IBarrel barrelcc : this.barrels) {
+                    barrelcc.setSucess(false);
                 }
+
+
 
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Erro ao processar a URL: " + e.getMessage());
+
             }
         }
         else{
@@ -181,6 +203,7 @@ public class Downloader extends Thread {
 
         }
     }
+
 
     private Map<String, Integer> normalizeWords(String text) {
         // Remove acentuação e normaliza caracteres especiais

@@ -12,7 +12,6 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
     private static String FILE_NAME;
     private static int MAX_SIZE;
     private final Queue<String> queue;
-    private final Set<String> urlSet;
 
     static {
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
@@ -29,7 +28,6 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
     protected QueueImp() throws RemoteException {
         super();
         this.queue = new LinkedList<>();
-        this.urlSet = new HashSet<>();
     }
 
     @Override
@@ -44,7 +42,6 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
             }
         }
         String url = queue.poll();
-        urlSet.remove(url);
         saveQueueToFile();
         return url;
     }
@@ -52,30 +49,25 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
     @Override
     public synchronized void addURL(String url) throws RemoteException {
         loadQueueFromFile();
-        if (!urlSet.contains(url) && this.queue.size() < MAX_SIZE) {
+        if (this.queue.size() < MAX_SIZE) {
             queue.add(url);
-            urlSet.add(url);
             saveQueueToFile();
             notifyAll(); // Notifica as threads que estão à espera de uma URL
         }
-
-
     }
 
-
     private void loadQueueFromFile() {
+        queue.clear(); // Limpa a queue antes de carregar do ficheiro
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_NAME))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (!urlSet.contains(line)) {
-                    this.queue.add(line);
-                    urlSet.add(line);
-                }
+                queue.add(line);
             }
         } catch (IOException e) {
             System.err.println("Erro ao carregar a queue: " + e.getMessage());
         }
     }
+
 
     private void saveQueueToFile() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME))) {

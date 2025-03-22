@@ -15,8 +15,10 @@ import java.util.logging.Logger;
 public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private static final Logger logger = Logger.getLogger(BarrelImpl.class.getName());
     private Connection conn;
-    private IBarrel outrosBarrel;
-    private boolean notificação = false;
+    private boolean sucess = false;
+    private IBarrel outroBarrel;
+
+
 
     public BarrelImpl(String barrelName) throws RemoteException {
         super();
@@ -107,37 +109,32 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 }
             }
 
-            notificar();
+            outroBarrel.setSucess(true); //Notifico que já foi feito
 
-            long tempoLimite = 5000; // Tempo limite em milissegundos (5 segundos)
-            long tempoInicio = System.currentTimeMillis();
-            while (System.currentTimeMillis() - tempoInicio < tempoLimite) {
-                if(this.notificação){
-                   this.conn.commit();
-                   return true;
-                };
+            long tempoInicial = System.currentTimeMillis();
+            while (System.currentTimeMillis() - tempoInicial < 5000) {
+                if (outroBarrel.isSucess() && this.sucess) {
+                    this.conn.commit();
+                    return true;
+                }
             }
-
-            if(!this.notificação){
-                this.conn.rollback();
-                System.out.println("Fez Rollback");
-            };
-
-
+            conn.rollback();
+            return false;
         } catch (SQLException e) {
             e.printStackTrace();
             try {
                 if (this.conn != null) {
-                    this.conn.rollback(); // Caso aconteça algum erro, desfaz a transação
+                    this.conn.rollback();
+                    return false;
                 }
             } catch (SQLException ex) {
                 ex.printStackTrace();
+                return false;
             }
             throw new RemoteException("Erro ao adicionar informações ao índice", e);
         }
-        return false;
-    }
 
+    }
 
     // Método para procurar uma palavra no índice e retornar as URLs associadas
     @Override
@@ -193,23 +190,50 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return resposta;
     }
 
-
     @Override
-    public void setOutrosBarrel(IBarrel outrosBarrel) throws RemoteException {
-        this.outrosBarrel=outrosBarrel;
-
+    public IBarrel getOutroBarrel() throws RemoteException {
+        return outroBarrel;
     }
 
     @Override
-    public void notificar() throws RemoteException {
-        // Aqui você chama setNotificacao para atualizar o valor
-        if (outrosBarrel != null) {
-            outrosBarrel.setNotificação(true); // Atualiza o valor remotamente
+    public void setOutroBarrel(IBarrel outroBarrel) throws RemoteException {
+        this.outroBarrel = outroBarrel;
+    }
+
+    @Override
+    public boolean FinalizarOpe() throws Exception {
+        try {
+            if (this.sucess && this.outroBarrel.isSucess()) {
+                if (this.conn != null) {
+                    this.conn.commit();
+                }
+                return true;
+            } else {
+                if (this.conn != null) {
+                    this.conn.rollback();
+                }
+                return false;
+            }
+        } catch (SQLException e) {
+            try {
+                if (this.conn != null) {
+                    this.conn.rollback(); // Caso aconteça algum erro, desfaz a transação
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            throw new RemoteException("Erro ao finalizar operação", e);
         }
     }
 
+
     @Override
-    public void setNotificação(boolean notificação) throws RemoteException{
-        this.notificação = notificação;
+    public boolean isSucess() throws RemoteException {
+        return sucess;
+    }
+
+    @Override
+    public void setSucess(boolean sucess) throws RemoteException {
+        this.sucess = sucess;
     }
 }
