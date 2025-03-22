@@ -102,7 +102,6 @@ public class Downloader extends Thread {
             try {
                 String url = queue.getURL();
                 if (url != null) {
-                    System.out.println("Processando URL: " + url);
                     processContent(url);
                 } else {
                     System.out.println("Fila vazia. Aguardando novas URLs...");
@@ -125,6 +124,7 @@ public class Downloader extends Thread {
         IBarrel barrelc = this.barrels.get(random.nextInt(2));
         if (!barrelc.containsUrl(url)) {
             try {
+                System.out.println("Processando URL: " + url);
                 // Conectar-se à URL e obter o conteúdo HTML com Jsoup
                 Document doc = Jsoup.connect(url).get();
 
@@ -158,16 +158,27 @@ public class Downloader extends Thread {
                 }
 
                 if (sucesso) {
+                    barrelc = this.barrels.get(random.nextInt(2));
+
                     for (String link : listaLinks) {
-                        this.queue.addURL(link);
+                        if (!barrelc.containsUrl(link)) {
+                            this.queue.addURL(link);
+                        }
                     }
+                    System.out.println("Sucesso");
                 }
 
-                if (!sucesso) {this.queue.addURL(url);}
+                if (!sucesso) {this.queue.addURL(url);
+                    System.out.println("Não Sucesso");
+                }
 
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Erro ao processar a URL: " + e.getMessage());
             }
+        }
+        else{
+            System.out.println("O "+url+" está na bd: "+ barrelc.containsUrl(url));
+
         }
     }
 
@@ -208,6 +219,7 @@ public class Downloader extends Thread {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 }
 
