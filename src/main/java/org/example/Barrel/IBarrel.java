@@ -12,7 +12,7 @@ public interface IBarrel extends Remote {
      * @param url URL onde a palavra foi encontrada.
      * @throws RemoteException Se ocorrer um erro na comunicação RMI.
      */
-    void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException;
+    boolean addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException;
 
 
         /**
@@ -33,5 +33,12 @@ public interface IBarrel extends Remote {
      */
     List<String> getConnections (String url) throws RemoteException;
 
+    boolean containsUrl(String url) throws RemoteException;
+
+    void setOutrosBarrel(IBarrel outrosBarrel) throws RemoteException;
+
+    void notificar() throws RemoteException;
+
+    void setNotificação(boolean notificação) throws RemoteException;
 }
 

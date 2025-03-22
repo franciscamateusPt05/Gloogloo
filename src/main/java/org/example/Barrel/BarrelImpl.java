@@ -15,6 +15,8 @@ import java.util.logging.Logger;
 public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private static final Logger logger = Logger.getLogger(BarrelImpl.class.getName());
     private Connection conn;
+    private IBarrel outrosBarrel;
+    private boolean notificação = false;
 
     public BarrelImpl(String barrelName) throws RemoteException {
         super();
@@ -52,7 +54,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     // Método para adicionar uma palavra ao índice associada a uma URL
     @Override
-    public void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException {
+    public boolean addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException {
 
         try {
 
@@ -105,7 +107,22 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 }
             }
 
-            conn.commit();  // Commit a transação
+            notificar();
+
+            long tempoLimite = 5000; // Tempo limite em milissegundos (5 segundos)
+            long tempoInicio = System.currentTimeMillis();
+            while (System.currentTimeMillis() - tempoInicio < tempoLimite) {
+                if(this.notificação){
+                   this.conn.commit();
+                   return true;
+                };
+            }
+
+            if(!this.notificação){
+                this.conn.rollback();
+                System.out.println("Fez Rollback");
+            };
+
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -118,6 +135,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             }
             throw new RemoteException("Erro ao adicionar informações ao índice", e);
         }
+        return false;
     }
 
 
@@ -155,5 +173,43 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     @Override
     public List<String> getConnections(String url) throws RemoteException {
         throw new UnsupportedOperationException("Unimplemented method 'getConnections'");
+    }
+
+    @Override
+    public boolean containsUrl(String url) throws RemoteException {
+        String query = "SELECT COUNT(*) FROM urls WHERE url = ?";
+        boolean resposta = true;
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, url);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    resposta = rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return resposta;
+    }
+
+
+    @Override
+    public void setOutrosBarrel(IBarrel outrosBarrel) throws RemoteException {
+        this.outrosBarrel=outrosBarrel;
+
+    }
+
+    @Override
+    public void notificar() throws RemoteException {
+        // Aqui você chama setNotificacao para atualizar o valor
+        if (outrosBarrel != null) {
+            outrosBarrel.setNotificação(true); // Atualiza o valor remotamente
+        }
+    }
+
+    @Override
+    public void setNotificação(boolean notificação) throws RemoteException{
+        this.notificação = notificação;
     }
 }

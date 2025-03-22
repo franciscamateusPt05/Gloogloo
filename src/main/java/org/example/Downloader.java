@@ -27,6 +27,8 @@ public class Downloader extends Thread {
     private String barrel1DbURL;
     private String barrel2DbURL;
 
+    private boolean sucesso = false;
+
 
     // Caminho do arquivo de propriedades
     private static final String CONFIG_FILE = "src/main/java/org/example/Properties/barrel.properties";
@@ -43,6 +45,9 @@ public class Downloader extends Thread {
             // Conectar aos Barrels usando as URLs configuradas
             IBarrel barrel1 = (IBarrel) Naming.lookup(barrel1URL);
             IBarrel barrel2 = (IBarrel) Naming.lookup(barrel2URL);
+
+            barrel1.setOutrosBarrel(barrel2);
+            barrel2.setOutrosBarrel(barrel1);
 
             barrels = Arrays.asList(barrel1, barrel2);
 
@@ -115,44 +120,54 @@ public class Downloader extends Thread {
     }
 
     // Método para processar o conteúdo da URL com Jsoup
-    private void processContent(String url) {
-        try {
-            // Conectar-se à URL e obter o conteúdo HTML com Jsoup
-            Document doc = Jsoup.connect(url).get();
+    private void processContent(String url) throws RemoteException {
+        Random random = new Random();
+        IBarrel barrelc = this.barrels.get(random.nextInt(2));
+        if (!barrelc.containsUrl(url)) {
+            try {
+                // Conectar-se à URL e obter o conteúdo HTML com Jsoup
+                Document doc = Jsoup.connect(url).get();
 
-            // Extrair o título da página
-            String title = doc.title();
-            System.out.println(title);
+                // Extrair o título da página
+                String title = doc.title();
+                System.out.println(title);
 
-            // Extrair e normalizar palavras-chave do texto da página
-            String bodyText = doc.body().text();
-            Map<String, Integer> palavras = normalizeWords(bodyText);
-
-
-            String citacao = doc.select("p").first() != null ? doc.select("p").first().text() : doc.title();
-            System.out.println(citacao);
+                // Extrair e normalizar palavras-chave do texto da página
+                String bodyText = doc.body().text();
+                Map<String, Integer> palavras = normalizeWords(bodyText);
 
 
-            // Extrair todas as URLs do conteúdo
-            List<String> listaLinks = doc.select("a[href]").eachAttr("abs:href").stream()
-                    .distinct()
-                    .filter(link -> !link.contains("#") && // Exclui links com fragmentos
-                            !link.contains("sessionid") && // Exclui links com parâmetros de sessão
-                            !link.contains("login") && // Exclui links de login
-                            !link.contains("404") && // Exclui links de páginas de erro
-                            !link.contains("utm_")) // Exclui links de rastreamento
-                    .collect(Collectors.toList());
+                String citacao = doc.select("p").first() != null ? doc.select("p").first().text() : doc.title();
+                System.out.println(citacao);
 
-            for (IBarrel barrel : this.barrels) {
-                barrel.addToIndex(palavras,url,listaLinks,title,citacao);
+
+                // Extrair todas as URLs do conteúdo
+                List<String> listaLinks = doc.select("a[href]").eachAttr("abs:href").stream()
+                        .distinct()
+                        .filter(link -> link.startsWith("http") && // Garante que é um URL válido
+                                !link.contains("#") && // Exclui links com fragmentos
+                                !link.contains("sessionid") && // Exclui links com parâmetros de sessão
+                                !link.contains("login") && // Exclui links de login
+                                !link.contains("404") && // Exclui links de páginas de erro
+                                !link.contains("utm_")) // Exclui links de rastreamento
+                        .toList();
+
+
+                for (IBarrel barrel : this.barrels) {
+                    sucesso = barrel.addToIndex(palavras, url, listaLinks, title, citacao);
+                }
+
+                if (sucesso) {
+                    for (String link : listaLinks) {
+                        this.queue.addURL(link);
+                    }
+                }
+
+                if (!sucesso) {this.queue.addURL(url);}
+
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Erro ao processar a URL: " + e.getMessage());
             }
-
-            for (String link : listaLinks) {this.queue.addURL(link);}
-
-
-
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Erro ao processar a URL: " + e.getMessage());
         }
     }
 

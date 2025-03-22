@@ -115,10 +115,3 @@ CREATE TRIGGER trg_update_ranking
     AFTER INSERT OR DELETE OR UPDATE ON url_links
     FOR EACH ROW
     EXECUTE FUNCTION update_ranking();
-
--- Criar a tabela para a base de dados Queue
-\c queue;
-
-CREATE TABLE queue (
-                       url TEXT PRIMARY KEY
-);
