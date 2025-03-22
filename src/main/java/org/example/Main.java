@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Scanner;
@@ -154,7 +155,7 @@ public class Main {
                 consultURLConnections();
                 break;
             case 4:
-                System.out.println(LINE_BREAK + "\nOpening administrative page:\n");
+                System.out.println(LINE_BREAK + "\nOpening administrative page:");
                 System.out.println(gateway.getStatistics());
                 break;
             default:
@@ -183,8 +184,48 @@ public class Main {
     private static void performSearch() {
         try {
             String searchQuery = readSearch();
-            SearchResult result = gateway.getSearch(searchQuery);
-            System.out.println("Search completed. Results: " + result);
+            List<SearchResult> results = gateway.search(searchQuery);
+    
+            if (results.isEmpty()) {
+                System.out.println("No results found for: " + searchQuery);
+                return;
+            }
+    
+            int totalResults = results.size();
+            int currentPage = 1;
+            int resultsPerPage = 10;
+            int totalPages = (int) Math.ceil((double) totalResults / resultsPerPage);
+    
+            while (true) {
+                int start = (currentPage - 1) * resultsPerPage;
+                int end = Math.min(start + resultsPerPage, totalResults);
+                
+                System.out.println(LINE_BREAK);
+                System.out.println("\nPage " + currentPage + " of " + totalPages + "\n");
+    
+                for (int i = start; i < end; i++) {
+                    SearchResult result = results.get(i);
+                    System.out.println("URL: " + result.getUrl());
+                    System.out.println("Title: " + result.getTitle());
+                    System.out.println("Snippet: " + result.getSnippet());
+                    System.out.println(LINE_BREAK);
+                }
+                
+                System.out.println(LINE_BREAK);
+                System.out.println("[P] Previous Page | [N] Next Page | [0] Return to Menu");
+                String input = scanner.nextLine().trim().toUpperCase();
+    
+                if (input.equals("N") && currentPage < totalPages) {
+                    currentPage++;
+                } else if (input.equals("P") && currentPage > 1) {
+                    currentPage--;
+                } else if (input.equals("0")) {
+                    break;
+                } else {
+                    System.out.println("Invalid input. Please try again.");
+                }
+            }
+    
         } catch (RemoteException e) {
             System.err.println("Search failed: " + e.getMessage());
         }
@@ -246,7 +287,7 @@ public class Main {
      */
     private static String readSearch() {
         try {
-            System.out.print("Search: ");
+            System.out.print("Search terms: ");
             return scanner.nextLine();
         } catch (NoSuchElementException | IllegalStateException e) {
             return null;

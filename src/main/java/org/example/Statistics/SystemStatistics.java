@@ -37,7 +37,7 @@ public class SystemStatistics implements Serializable {
         return averageResponseTimes;
     }
     public String toString() {
-        return "Top 10 Searches: " + topSearches +
+        return "\nTop 10 Searches: " + topSearches +
                "\nBarrel Index Sizes: " + barrelIndexSizes +
                "\nAverage Response Times (ms): " + averageResponseTimes;
     }

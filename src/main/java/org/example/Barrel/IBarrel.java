@@ -5,6 +5,8 @@ import java.rmi.RemoteException;
 import java.util.List;
 import java.util.Map;
 
+import org.example.SearchResult;
+
 public interface IBarrel extends Remote {
     /**
      * Adiciona uma palavra ao índice do Barrel associada a uma URL.
@@ -23,7 +25,7 @@ public interface IBarrel extends Remote {
          * @return Lista de URLs onde a palavra foi encontrada.
          * @throws RemoteException Se ocorrer um erro na comunicação RMI.
          */
-    List<String> search(String word) throws RemoteException;
+    List<SearchResult> search(String search) throws RemoteException;
 
     /**
      * Searches for all URL connections of the given URL.
@@ -32,7 +34,7 @@ public interface IBarrel extends Remote {
      * @return the search results as a SearchResult object
      * @throws RemoteException if a remote error occurs during the search
      */
-    List<String> getConnections (String url) throws RemoteException;
+    SearchResult getConnections (String url) throws RemoteException;
 
     boolean containsUrl(String url) throws RemoteException;
 

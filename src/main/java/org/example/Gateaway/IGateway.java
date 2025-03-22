@@ -6,6 +6,7 @@ import org.example.Statistics.SystemStatistics;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.util.List;
 
 /**
  * The IGateway interface defines the methods for a remote Gateway object
@@ -28,7 +29,7 @@ public interface IGateway extends Remote {
      * @return the searched results as a SearchResult object
      * @throws RemoteException if a remote communication error occurs
      */
-    public SearchResult getSearch(String search) throws RemoteException;
+    public List<SearchResult> search(String search) throws RemoteException;
 
     /**
      * Searches for all URL connections of the given URL.
