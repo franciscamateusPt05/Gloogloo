@@ -53,13 +53,15 @@ public class Downloader extends Thread {
 
             barrels = Arrays.asList(barrel1, barrel2);
 
+            start();
+
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Erro ao conectar à Queue ou aos Barrels: " + e.getMessage());
         }
     }
 
     // Método para carregar as propriedades a partir do arquivo config.properties
-    private void loadProperties() {
+    private synchronized void loadProperties() {
         try {
             // Carregar as propriedades de barrel.properties
             Properties rmiProps = new Properties();
@@ -121,7 +123,7 @@ public class Downloader extends Thread {
     }
 
     // Método para processar o conteúdo da URL com Jsoup
-    private void processContent(String url) throws RemoteException {
+    private synchronized void processContent(String url) throws RemoteException {
         Random random = new Random();
         IBarrel barrelc = this.barrels.get(random.nextInt(2));
         if (!barrelc.containsUrl(url)) {
@@ -233,12 +235,9 @@ public class Downloader extends Thread {
 
     public static void main (String[] args) {
         try {
-
-            // Criar e iniciar a thread do Downloader para processar a URL
-            Downloader downloader1 = new Downloader();
-            downloader1.start(); // Inicia a primeira thread para processar a URL
-
-
+            for(int i=0;i<10;i++){
+                new Downloader();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -49,7 +49,7 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
     @Override
     public synchronized void addURL(String url) throws RemoteException {
         loadQueueFromFile();
-        if (this.queue.size() < MAX_SIZE) {
+        if (this.queue.size() < MAX_SIZE && !queue.contains(url)) {
             queue.add(url);
             saveQueueToFile();
             notifyAll(); // Notifica as threads que estão à espera de uma URL
