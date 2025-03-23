@@ -8,8 +8,7 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class BarrelServer {
-
+public class BarrelServer2 {
     private static final Logger logger = Logger.getLogger(BarrelServer.class.getName());
 
     public static void main(String[] args) {
@@ -23,11 +22,9 @@ public class BarrelServer {
         }
 
         try {
-            // Criar o registro RMI na porta padrão
+            // Registrar o Barrel 2
             logger.info("Criando o registro RMI na porta para o barrel 1...");
-            LocateRegistry.createRegistry(Integer.parseInt(properties.getProperty("barrel1.rmi.port")));
-
-            // Registrar o Barrel 1
+            LocateRegistry.createRegistry(Integer.parseInt(properties.getProperty("barrel2.rmi.port")));
             String barrel1Host = properties.getProperty("barrel1.rmi.host");
             String barrel1Port = properties.getProperty("barrel1.rmi.port");
             String barrel2Host = properties.getProperty("barrel2.rmi.host");
@@ -37,9 +34,10 @@ public class BarrelServer {
             String barrel1RmiUrl = String.format("rmi://%s:%s/%s", barrel1Host, barrel1Port, barrel1ServiceName);
             String barrel2RmiUrl = String.format("rmi://%s:%s/%s", barrel2Host, barrel2Port, barrel2ServiceName);
 
-            BarrelImpl barrelService1 = new BarrelImpl("barrel1", barrel2RmiUrl);
-            Naming.rebind(barrel1RmiUrl, barrelService1);
-            logger.info("Serviço Barrel 1 registrado em " + barrel1RmiUrl);
+            BarrelImpl barrelService2 = new BarrelImpl("barrel2", barrel1RmiUrl);
+            Naming.rebind(barrel2RmiUrl, barrelService2);
+            logger.info("Serviço Barrel 2 registrado em " + barrel2RmiUrl);
+
             System.out.println("BarrelService1 e BarrelService2 estão em execução...");
 
         } catch (Exception e) {

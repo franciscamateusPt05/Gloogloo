@@ -2,6 +2,9 @@ package org.example.Barrel;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.*;
@@ -19,12 +22,13 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private Connection conn;
     private boolean sucess = false;
     private IBarrel outroBarrel;
+    private String outro;
 
 
 
-    public BarrelImpl(String barrelName) throws RemoteException {
+    public BarrelImpl(String barrelName, String outro) throws RemoteException {
         super();
-
+        this.outro = outro;
         Properties properties = new Properties();
 
         // Carregar propriedades do arquivo
@@ -54,12 +58,19 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             logger.log(Level.SEVERE, "Erro ao conectar ao banco de dados: " + e.getMessage());
             throw new RemoteException("Erro ao conectar ao banco de dados", e);
         }
+
     }
 
     // Método para adicionar uma palavra ao índice associada a uma URL
     @Override
     public boolean addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException {
-
+        try {
+            outroBarrel = (IBarrel) Naming.lookup(this.outro);
+        } catch (NotBoundException e) {
+            return false;
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
         try {
 
             // Inserir ou atualizar as palavras no banco de dados
