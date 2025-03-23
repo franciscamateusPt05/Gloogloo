@@ -3980,3 +3980,7 @@ http://otd.harvard.edu/contact-us/
 http://map.harvard.edu
 https://www.harvardonline.harvard.edu/course/outsmarting-implicit-bias
 https://www.harvardonline.harvard.edu/course
+https://www.uc.pt
+https://www.cnn.pt
+https://www.dn.pt
+https://www.chatgpt.com

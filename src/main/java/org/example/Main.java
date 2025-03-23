@@ -22,9 +22,6 @@ public class Main {
     /** Line separator used for menu display */
     private static final String LINE_BREAK = "=".repeat(30);
 
-    /** To receive the Statistics from Gateway */
-    private static final long serialVersionUID = 1L;
-
     /** Path to the configuration file */
     private static final String CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
 
@@ -171,7 +168,6 @@ public class Main {
             String url = readURL();
             if (url != null) {
                 gateway.insertURL(url);
-                System.out.println("URL inserted successfully into Gateway.");
             }
         } catch (RemoteException e) {
             System.err.println("Failed to insert URL: " + e.getMessage());

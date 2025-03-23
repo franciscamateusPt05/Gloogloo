@@ -53,7 +53,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             queue = (IQueue) Naming.lookup(queueUrl);
             System.out.println("Connected to Queue: " + queueUrl);
 
-            // Check available barrels
+            // Check available barrels and connect to one of the active barrels
             checkActiveBarrels(barrelProp);
 
         } catch (Exception e) {
@@ -73,6 +73,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         try (FileInputStream input = new FileInputStream(filePath)) {
             prop.load(input);
         }
+        if (prop.isEmpty()) {
+            throw new IOException("Properties file is empty or not loaded: " + filePath);
+        }
         return prop;
     }
 
@@ -85,8 +88,17 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
      */
     private String getRmiUrl(Properties prop, String prefix) {
         String host = prop.getProperty(prefix + ".rmi.host", "localhost");
-        String port = prop.getProperty(prefix + ".rmi.port");
-        String service = prop.getProperty(prefix + ".rmi.service_name");
+        String port = prop.getProperty(prefix + ".rmi.port", "1112");
+        String service = prop.getProperty(prefix + ".rmi.service_name","QueueService");
+
+        // Validate that none of the values are null
+        if (host == null || port == null || service == null) {
+            throw new IllegalArgumentException("Missing RMI configuration for " + prefix + ":\n"
+                    + " - Host: " + host + "\n"
+                    + " - Port: " + port + "\n"
+                    + " - Service: " + service);
+        }
+
         return "rmi://" + host + ":" + port + "/" + service;
     }
 
@@ -122,7 +134,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             throw new RemoteException("Queue service is not initialized.");
         }
         queue.addURL(url);
-        System.out.println("URL inserted!");
+        System.out.println("URL inserted successfully into Queue");
     }
 
     public List<SearchResult> search(String search) throws RemoteException {
@@ -132,6 +144,10 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
 
         try {
+            List<SearchResult> results = selectedBarrel.search(search);
+            if (results.isEmpty()) {
+                System.out.println("[Gateway] No results found for : " + search);
+            }
             return selectedBarrel.search(search);
         } catch (RemoteException e) {
             System.err.println("Error during search: " + e.getMessage());

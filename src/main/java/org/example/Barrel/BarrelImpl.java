@@ -149,17 +149,33 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     }
 
-    // Método para procurar uma palavra no índice e retornar as URLs associadas
-    @Override
     public List<SearchResult> search(String word) throws RemoteException {
-
-        // MODIFICAR
-
-        List<SearchResult> urls = new ArrayList<SearchResult>();
-        String query = "SELECT url FROM word_url WHERE word = ?";
-       
-        return urls;
+        List<SearchResult> results = new ArrayList<>();
+        String query = "SELECT u.url, u.titulo, u.citacao, u.ranking " +
+                       "FROM word_url w " +
+                       "JOIN urls u ON w.url = u.url " +
+                       "WHERE w.word = ? " +
+                       "ORDER BY u.ranking DESC";
+    
+        try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
+            stmt.setString(1, word);
+    
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String url = rs.getString("url");
+                    String title = rs.getString("titulo");
+                    String snippet = rs.getString("citacao");
+                    results.add(new SearchResult(title, url, snippet));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RemoteException("Database query failed", e);
+        }
+    
+        return results;
     }
+    
 
     // Método para fechar a conexão (se necessário)
     public void closeConnection(Connection conn) throws RemoteException {
@@ -173,10 +189,30 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
-    @Override
     public SearchResult getConnections(String url) throws RemoteException {
-        throw new UnsupportedOperationException("Unimplemented method 'getConnections'");
+        List<String> connectedUrls = new ArrayList<>();
+        String query = "SELECT to_url FROM url_links WHERE from_url = ? " +
+                       "UNION " +
+                       "SELECT from_url FROM url_links WHERE to_url = ?";
+    
+        try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
+    
+            stmt.setString(1, url);
+            stmt.setString(2, url);
+    
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    connectedUrls.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RemoteException("Database query failed", e);
+        }
+    
+        return new SearchResult(url, connectedUrls);
     }
+
 
     @Override
     public boolean containsUrl(String url) throws RemoteException {

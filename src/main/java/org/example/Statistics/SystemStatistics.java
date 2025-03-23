@@ -1,10 +1,8 @@
 package org.example.Statistics;
 
 import java.io.Serializable;
-import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.HashMap;
 
 /**
  * Represents the system's statistics, including:
