@@ -36,28 +36,8 @@ public class Downloader extends Thread {
     private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
 
     public Downloader() {
-        try {
-            // Carregar as propriedades do arquivo
-            loadProperties();
-
-            // Conectar à Queue usando a URL configurada no arquivo de propriedades
-            this.queue = (IQueue) Naming.lookup(queueURL);
-
-            // Conectar aos Barrels usando as URLs configuradas
-            IBarrel barrel1 = (IBarrel) Naming.lookup(barrel1URL);
-            IBarrel barrel2 = (IBarrel) Naming.lookup(barrel2URL);
-
-            barrel1.setOutroBarrel(barrel2);
-            barrel2.setOutroBarrel(barrel1);
-
-
-            barrels = Arrays.asList(barrel1, barrel2);
-
-            start();
-
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Erro ao conectar à Queue ou aos Barrels: " + e.getMessage());
-        }
+        conectar();
+        start();
     }
 
     // Método para carregar as propriedades a partir do arquivo config.properties
@@ -231,6 +211,28 @@ public class Downloader extends Thread {
             }
         }
         return frequenciaPalavras;
+    }
+
+    public void conectar(){
+        try {
+            // Carregar as propriedades do arquivo
+            loadProperties();
+
+            // Conectar à Queue usando a URL configurada no arquivo de propriedades
+            this.queue = (IQueue) Naming.lookup(queueURL);
+
+            // Conectar aos Barrels usando as URLs configuradas
+            IBarrel barrel1 = (IBarrel) Naming.lookup(barrel1URL);
+            IBarrel barrel2 = (IBarrel) Naming.lookup(barrel2URL);
+
+            barrel1.setOutroBarrel(barrel2);
+            barrel2.setOutroBarrel(barrel1);
+
+
+            barrels = Arrays.asList(barrel1, barrel2);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Erro ao conectar à Queue ou aos Barrels: " + e.getMessage());
+        }
     }
 
     public static void main (String[] args) {
