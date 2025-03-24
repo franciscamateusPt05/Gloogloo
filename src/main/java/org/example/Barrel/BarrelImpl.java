@@ -149,22 +149,40 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     }
 
-    public List<SearchResult> search(String word) throws RemoteException {
+    public List<SearchResult> search(String words) throws RemoteException {
         List<SearchResult> results = new ArrayList<>();
-        String query = "SELECT u.url, u.titulo, u.citacao, u.ranking " +
-                       "FROM word_url w " +
-                       "JOIN urls u ON w.url = u.url " +
-                       "WHERE w.word = ? " +
-                       "ORDER BY u.ranking DESC";
+        String[] terms = words.split("\\s+"); // Split by whitespace to get individual terms
+        StringBuilder queryBuilder = new StringBuilder();
     
-        try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
-            stmt.setString(1, word);
+        queryBuilder.append("SELECT u.url, u.titulo, u.citacao, u.ranking, ")
+                    .append("ARRAY_AGG(ul.from_url) AS incoming_links ")
+                    .append("FROM word_url w ")
+                    .append("JOIN urls u ON w.url = u.url ")
+                    .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
+                    .append("WHERE w.word = ANY (?) ")
+                    .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
+                    .append("ORDER BY u.ranking DESC, COUNT(w.word) DESC");
+    
+        try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
+            Array array = this.conn.createArrayOf("text", terms);
+            stmt.setArray(1, array);
     
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String url = rs.getString("url");
                     String title = rs.getString("titulo");
                     String snippet = rs.getString("citacao");
+                    Array incomingLinksArray = rs.getArray("incoming_links");
+                    List<String> incomingLinks = new ArrayList<>();
+    
+                    if (incomingLinksArray != null) {
+                        String[] links = (String[]) incomingLinksArray.getArray();
+                        for (String link : links) {
+                            incomingLinks.add(link);
+                        }
+                    }
+    
+                    // Construct the SearchResult using title, url, and snippet
                     results.add(new SearchResult(title, url, snippet));
                 }
             }
@@ -174,7 +192,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     
         return results;
-    }
+    }   
     
 
     // Método para fechar a conexão (se necessário)
