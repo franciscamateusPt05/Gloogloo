@@ -23,6 +23,10 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private boolean sucess = false;
     private IBarrel outroBarrel;
     private String outro;
+    String rmiUrl;
+    String dbUrl;
+    String dbUser;
+    String dbPassword;
 
 
 
@@ -40,10 +44,10 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
 
         // Escolher a configuração do Barrel com base no nome (barrel1 ou barrel2)
-        String rmiUrl = properties.getProperty(barrelName + ".rmi.url");
-        String dbUrl = properties.getProperty(barrelName + ".db.url");
-        String dbUser = properties.getProperty(barrelName + ".db.user");
-        String dbPassword = properties.getProperty(barrelName + ".db.password");
+        rmiUrl = properties.getProperty(barrelName + ".rmi.url");
+        dbUrl = properties.getProperty(barrelName + ".db.url");
+        dbUser = properties.getProperty(barrelName + ".db.user");
+        dbPassword = properties.getProperty(barrelName + ".db.password");
 
         // Log de depuração
         logger.info("Conectando ao Barrel: " + barrelName);
@@ -299,7 +303,24 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     @Override
     public List<String> getTopSearches() throws RemoteException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getTopSearches'");
+        List<String> topSearches = new ArrayList<>();
+
+        // Try-with-resources to automatically close resources
+        try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
+            String query = "SELECT word FROM word ORDER BY top DESC LIMIT 10";  // Query to get top 10 searches
+            try (Statement stmt = connection.createStatement()) {
+                ResultSet resultSet = stmt.executeQuery(query);
+
+                while (resultSet.next()) {
+                    topSearches.add(resultSet.getString("word"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RemoteException("Error retrieving top searches from the database.", e);
+        }
+
+        return topSearches;
     }
+
 }

@@ -150,36 +150,41 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     public List<SearchResult> search(String search) throws RemoteException {
         if (selectedBarrel == null) {
-            System.err.println("No barrel selected for search.");
-            return new ArrayList<>();
+            System.out.println("[Gateway] No barrel selected. Attempting reconnection...");
+            try {
+                checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
+                if (selectedBarrel == null) {
+                    System.err.println("[Gateway] No barrels available after reconnection attempt.");
+                    return new ArrayList<>();
+                }
+            } catch (IOException e) {
+                System.err.println("[Gateway] Error loading barrel properties: " + e.getMessage());
+                return new ArrayList<>();
+            }
         }
-
+    
         try {
-            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
-
             long startTime = System.nanoTime();
             List<SearchResult> results = selectedBarrel.search(search);
             long endTime = System.nanoTime();
             double responseTime = (endTime - startTime) / 1_000_000.0; 
-
+    
             // Update BarrelStats for the selected barrel
             BarrelStats stats = responseTimes.get(selectedBarrelId);
-            stats.addResponseTime(responseTime);  // Update the stats with the new response time
-
+            stats.addResponseTime(responseTime);
+    
             updateStatistics(search, responseTime);
-
+    
             if (results.isEmpty()) {
                 System.out.println("[Gateway] No results found for: " + search);
             }
             return results;
         } catch (RemoteException e) {
-            System.err.println("Error during search: " + e.getMessage());
-            return new ArrayList<>();
-        } catch (IOException e) {
-            System.err.println("Error loading barrel properties during search: " + e.getMessage());
+            System.err.println("[Gateway] Error during search: " + e.getMessage());
             return new ArrayList<>();
         }
     }
+    
 
     private void updateStatistics(String search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
@@ -205,6 +210,13 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
         currentStats.setTopSearches(topSearches);
         currentStats.setResponseTimes(averageResponseTimes);
+
+        // Now notify all registered listeners about the updated statistics
+        try {
+            notifyListeners(); // This sends the updated stats to all listeners
+        } catch (RemoteException e) {
+            System.err.println("Failed to notify listeners: " + e.getMessage());
+        }
     }
 
     public synchronized SystemStatistics getStatistics() throws RemoteException {
@@ -214,13 +226,20 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     @Override
     public SearchResult getConnections(String url) throws RemoteException {
         if (selectedBarrel == null) {
-            System.err.println("No barrel selected for getConnections.");
-            return new SearchResult("No barrel selected", Collections.emptyList()); 
+            System.out.println("[Gateway] No barrel selected. Attempting reconnection...");
+            try {
+                checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
+                if (selectedBarrel == null) {
+                    System.err.println("[Gateway] No barrels available after reconnection attempt.");
+                    return new SearchResult("No barrel available", Collections.emptyList());
+                }
+            } catch (IOException e) {
+                System.err.println("[Gateway] Error loading barrel properties: " + e.getMessage());
+                return new SearchResult("Error loading barrel properties", Collections.emptyList());
+            }
         }
 
         try {
-            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
-
             long startTime = System.nanoTime();
             SearchResult result = selectedBarrel.getConnections(url);
             long endTime = System.nanoTime();
@@ -228,25 +247,24 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             // Update BarrelStats for the selected barrel
             BarrelStats stats = responseTimes.get(selectedBarrelId);
-            stats.addResponseTime(responseTime); 
+            stats.addResponseTime(responseTime);
 
             updateStatistics(url, responseTime);
 
             if (result == null || result.getUrls().isEmpty()) {
                 return new SearchResult(url, Collections.emptyList());
             }
-
             return result;
         } catch (RemoteException e) {
-            System.err.println("Error during getConnections: " + e.getMessage());
+            System.err.println("[Gateway] Error during getConnections: " + e.getMessage());
             return new SearchResult("Error occurred for: " + url, Collections.emptyList());
-        } catch (IOException e) {
+        } catch (@SuppressWarnings("hiding") IOException e) {
             e.printStackTrace();
             return new SearchResult("Error occurred for: " + url, Collections.emptyList());
         }
     }
 
-    @Override
+
     public synchronized void registerStatisticsListener(IStatistics listener) throws RemoteException {
         listeners.add(listener);
         System.out.println("Client registered for statistics updates.");
@@ -254,7 +272,11 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     private void notifyListeners() throws RemoteException {
         for (IStatistics listener : listeners) {
-            listener.updateStatistics(currentStats);
+            try {
+                listener.updateStatistics(currentStats);
+            } catch (RemoteException e) {
+                System.err.println("Failed to notify a listener: " + e.getMessage());
+            }
         }
     }
 }

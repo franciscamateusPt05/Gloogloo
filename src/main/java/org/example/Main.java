@@ -17,14 +17,15 @@ import org.example.Statistics.SystemStatistics;
 
 public class Main extends UnicastRemoteObject implements IStatistics {
 
-    protected Main() throws RemoteException {
-        super();
-    }
-
     private static final String LINE_BREAK = "=".repeat(30);
     private static final String CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
     private static Scanner scanner = new Scanner(System.in);
     private static IGateway gateway;
+    private static SystemStatistics latestStats;  // Store the latest statistics
+
+    public Main() throws RemoteException {
+        super();
+    }
 
     public static void main(String[] args) {
         System.out.println(LINE_BREAK);
@@ -41,8 +42,8 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             System.out.println("Connected to Gateway at rmi://" + host + ":" + port + "/" + serviceName);
 
             Main client = new Main();
-            gateway.registerStatisticsListener(client);
-            System.out.println("✅ Client registered for statistics updates.");
+            gateway.registerStatisticsListener(client);  // Register the client to receive statistics updates
+            System.out.println("Client registered for statistics updates.");
 
         } catch (IOException | NotBoundException e) {
             System.err.println("Failed to connect to Gateway: " + e.getMessage());
@@ -62,6 +63,31 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             } catch (RemoteException e) {
                 System.out.println("RMI error: " + e.getMessage());
             }
+        }
+    }
+
+    private static void openAdministrativePage() {
+
+        // Display the latest statistics received from the Gateway
+        if (latestStats != null) {
+            System.out.println("Current Statistics:");
+            System.out.println("Top Searches: " + latestStats.getTopSearches());
+            System.out.println("Barrel Sizes: " + latestStats.getBarrelIndexSizes());
+            System.out.println("Response Times: " + latestStats.getAverageResponseTimes());
+        } else {
+            System.out.println("No statistics available yet.");
+        }
+
+        System.out.println();
+        System.out.println("[0] Exit Administrative Page");
+
+        // Ask the user if they want to stay or exit
+        String input = scanner.nextLine().trim();
+
+        if (input.equals("0")) {
+            System.out.println("Exiting Administrative Page...");
+        } else {
+            System.out.println("Invalid input. Please enter [0] to exit.");
         }
     }
 
@@ -118,7 +144,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 break;
             case 4:
                 System.out.println(LINE_BREAK + "\nOpening administrative page:");
-                System.out.println(gateway.getStatistics());
+                openAdministrativePage();  // Show statistics
                 break;
             default:
                 System.out.println("Invalid option.");
@@ -211,6 +237,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             else
                 System.out.println("Invalid URL format. Please enter a valid URL.");
 
+
         } catch (Exception e) {
             return null;
         }
@@ -239,9 +266,10 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     @Override
     public void updateStatistics(SystemStatistics stats) throws RemoteException {
-        System.out.println("\uD83D\uDCCA Statistics Update Received:");
-        System.out.println("Top Searches: " + stats.getTopSearches());
-        //System.out.println("Barrel Sizes: " + stats.getBarrelSizes());
-        //System.out.println("Response Times: " + stats.getResponseTimes());
+        // This method will be called by the Gateway when new statistics are available
+        latestStats = stats;
+
+        // Optionally, you could also call openAdministrativePage to show updated stats
+        // openAdministrativePage(); // Automatically show updated stats
     }
 }
