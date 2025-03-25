@@ -23,6 +23,8 @@ public class Main extends UnicastRemoteObject implements IStatistics {
     private static IGateway gateway;
     private static SystemStatistics latestStats;  // Store the latest statistics
 
+    private static int menuOption;
+    
     public Main() throws RemoteException {
         super();
     }
@@ -51,7 +53,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
         boolean running = true;
         while (running) {
-            int menuOption = showMenu();
+            menuOption = showMenu();
             if (menuOption == 0) {
                 disconnect();
                 running = false;
@@ -67,8 +69,6 @@ public class Main extends UnicastRemoteObject implements IStatistics {
     }
 
     private static void openAdministrativePage() {
-
-        // Display the latest statistics received from the Gateway
         if (latestStats != null) {
             System.out.println("Current Statistics:");
             System.out.println("Top Searches: " + latestStats.getTopSearches());
@@ -78,16 +78,27 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             System.out.println("No statistics available yet.");
         }
 
-        System.out.println();
         System.out.println("[0] Exit Administrative Page");
 
-        // Ask the user if they want to stay or exit
-        String input = scanner.nextLine().trim();
+        try {
+            String input = null;
+            
+            // Check if there is more input available
+            if (scanner.hasNextLine()) {
+                input = scanner.nextLine().trim();
+            }
 
-        if (input.equals("0")) {
-            System.out.println("Exiting Administrative Page...");
-        } else {
-            System.out.println("Invalid input. Please enter [0] to exit.");
+            if (input != null) {
+                if (input.equals("0")) {
+                    System.out.println("Exiting Administrative Page...");
+                } else {
+                    System.out.println("Invalid input. Please enter [0] to exit.");
+                }
+            } else {
+                System.out.println("No input available. Exiting.");
+            }
+        } catch (NoSuchElementException | IllegalStateException e) {
+            System.out.println("Error reading input: " + e.getMessage());
         }
     }
 
@@ -144,7 +155,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 break;
             case 4:
                 System.out.println(LINE_BREAK + "\nOpening administrative page:");
-                openAdministrativePage();  // Show statistics
+                openAdministrativePage();
                 break;
             default:
                 System.out.println("Invalid option.");
@@ -165,6 +176,11 @@ public class Main extends UnicastRemoteObject implements IStatistics {
     private static void performSearch() {
         try {
             String searchQuery = readSearch();
+            if (searchQuery == null || searchQuery.isEmpty()) {
+                System.out.println("Search query cannot be empty.");
+                return;
+            }
+
             List<SearchResult> results = gateway.search(searchQuery);
 
             if (results.isEmpty()) {
@@ -173,18 +189,24 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             }
 
             int totalResults = results.size();
-            int currentPage = 1;
             int resultsPerPage = 10;
             int totalPages = (int) Math.ceil((double) totalResults / resultsPerPage);
+            int currentPage = 1;
 
             while (true) {
+                if (currentPage < 1 || currentPage > totalPages) {
+                    System.out.println("No more pages available. Returning to menu.");
+                    break;
+                }
+
                 int start = (currentPage - 1) * resultsPerPage;
                 int end = Math.min(start + resultsPerPage, totalResults);
 
                 System.out.println(LINE_BREAK);
                 System.out.println("\nPage " + currentPage + " of " + totalPages + "\n");
 
-                for (int i = start; i < end; i++) {
+                // Safe iteration to avoid IndexOutOfBounds
+                for (int i = start; i < end && i < results.size(); i++) {
                     SearchResult result = results.get(i);
                     System.out.println("URL: " + result.getUrl());
                     System.out.println("Title: " + result.getTitle());
@@ -192,14 +214,21 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                     System.out.println(LINE_BREAK);
                 }
 
-                System.out.println(LINE_BREAK);
                 System.out.println("[P] Previous Page | [N] Next Page | [0] Return to Menu");
                 String input = scanner.nextLine().trim().toUpperCase();
 
-                if (input.equals("N") && currentPage < totalPages) {
-                    currentPage++;
-                } else if (input.equals("P") && currentPage > 1) {
-                    currentPage--;
+                if (input.equals("N")) {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                    } else {
+                        System.out.println("You are already on the last page.");
+                    }
+                } else if (input.equals("P")) {
+                    if (currentPage > 1) {
+                        currentPage--;
+                    } else {
+                        System.out.println("You are already on the first page.");
+                    }
                 } else if (input.equals("0")) {
                     break;
                 } else {
@@ -209,18 +238,31 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
         } catch (RemoteException e) {
             System.err.println("Search failed: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("An unexpected error occurred: " + e.getMessage());
         }
     }
-
+    
     private static void consultURLConnections() {
-        try {
-            String url = readURL();
-            if (url != null) {
-                SearchResult result = gateway.getConnections(url);
-                System.out.println("Connections retrieved: " + result);
+        System.out.println("Input a URL or enter 0 to return:");
+        String input = scanner.nextLine().trim();
+
+        if (input.equals("0")) {
+            return;  // Exit the method or return to the main menu
+        }
+
+        // Validate the URL input before processing
+        if (isValidURL(input)) {
+            try {
+                // Process the URL input (e.g., search, retrieve data, etc.)
+                System.out.println("Processing the URL: " + input);
+                // Add your URL handling code here
+            } catch (Exception e) {
+                System.out.println("An error occurred while processing the URL.");
+                e.printStackTrace();
             }
-        } catch (RemoteException e) {
-            System.err.println("Failed to retrieve connections: " + e.getMessage());
+        } else {
+            System.out.println("Invalid URL format. Please enter a valid URL.");
         }
     }
 
@@ -236,16 +278,16 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 return input;
             else
                 System.out.println("Invalid URL format. Please enter a valid URL.");
-
-
         } catch (Exception e) {
             return null;
         }
         return readURL();
     }
 
+    // URL validation method (simple example)
     private static boolean isValidURL(String url) {
-        return url.startsWith("http://") || url.startsWith("https://");
+        String regex = "^(https?|ftp)://[^\s/$.?#].[^\s]*$";
+        return url.matches(regex);
     }
 
     private static String readSearch() {
@@ -266,10 +308,11 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     @Override
     public void updateStatistics(SystemStatistics stats) throws RemoteException {
-        // This method will be called by the Gateway when new statistics are available
         latestStats = stats;
-
-        // Optionally, you could also call openAdministrativePage to show updated stats
-        // openAdministrativePage(); // Automatically show updated stats
+        
+        if (menuOption == 4) { 
+            System.out.println("\n--- Statistics Updated ---");
+            openAdministrativePage(); 
+        }
     }
 }

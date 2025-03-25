@@ -53,4 +53,7 @@ public interface IGateway extends Remote {
      * @throws RemoteException If an RMI error occurs.
      */
     public void registerStatisticsListener(IStatistics listener) throws RemoteException;
+
+    void broadcastStatistics(SystemStatistics stats) throws RemoteException;
+
 }

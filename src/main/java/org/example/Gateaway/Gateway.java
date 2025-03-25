@@ -127,7 +127,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         if (activeBarrels.isEmpty()) {
             System.err.println("No active barrels available!");
         } else {
-            selectRandomBarrel();
+            selectRandomBarrel(); // Ensure a barrel is selected after checking active barrels
         }
     }
 
@@ -149,42 +149,68 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
     public List<SearchResult> search(String search) throws RemoteException {
+        // Refresh barrels and select a random barrel every time a search is performed
+        refreshAndSelectBarrel();
+
         if (selectedBarrel == null) {
-            System.out.println("[Gateway] No barrel selected. Attempting reconnection...");
-            try {
-                checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
-                if (selectedBarrel == null) {
-                    System.err.println("[Gateway] No barrels available after reconnection attempt.");
-                    return new ArrayList<>();
-                }
-            } catch (IOException e) {
-                System.err.println("[Gateway] Error loading barrel properties: " + e.getMessage());
-                return new ArrayList<>();
-            }
-        }
-    
-        try {
-            long startTime = System.nanoTime();
-            List<SearchResult> results = selectedBarrel.search(search);
-            long endTime = System.nanoTime();
-            double responseTime = (endTime - startTime) / 1_000_000.0; 
-    
-            // Update BarrelStats for the selected barrel
-            BarrelStats stats = responseTimes.get(selectedBarrelId);
-            stats.addResponseTime(responseTime);
-    
-            updateStatistics(search, responseTime);
-    
-            if (results.isEmpty()) {
-                System.out.println("[Gateway] No results found for: " + search);
-            }
-            return results;
-        } catch (RemoteException e) {
-            System.err.println("[Gateway] Error during search: " + e.getMessage());
+            System.out.println("[Gateway] No barrel available after refreshing.");
             return new ArrayList<>();
         }
+
+        List<SearchResult> results = new ArrayList<>();
+        boolean searchSucceeded = false;
+
+        // Try searching with all active barrels
+        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+            String barrelId = barrelEntry.getKey();
+            IBarrel barrel = barrelEntry.getValue();
+
+            System.out.println("[Gateway] Trying search on barrel: " + barrelId);
+
+            try {
+                long startTime = System.nanoTime();
+                results = barrel.search(search); 
+                long endTime = System.nanoTime();
+                double responseTime = (endTime - startTime) / 1_000_000.0;
+
+                // Update BarrelStats for the current barrel
+                BarrelStats stats = responseTimes.get(barrelId);
+                stats.addResponseTime(responseTime);
+
+                updateStatistics(search, responseTime); 
+
+                if (!results.isEmpty()) {
+                    selectedBarrel = barrel; 
+                    selectedBarrelId = barrelId;
+                    searchSucceeded = true; 
+                    break; 
+                }
+            } catch (IOException e) {
+                System.err.println("[Gateway] Error during search on barrel " + barrelId + ": " + e.getMessage());
+            }
+        }
+
+        if (!searchSucceeded) {
+            System.err.println("[Gateway] All barrels failed for search: " + search);
+        }
+
+        return results;
     }
-    
+
+    // Refresh active barrels and select a random barrel
+    private void refreshAndSelectBarrel() {
+        System.out.println("[Gateway] Refreshing active barrels...");
+        try {
+            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
+            if (selectedBarrel == null) {
+                System.err.println("[Gateway] No active barrels available.");
+            } else {
+                selectRandomBarrel();
+            }
+        } catch (IOException e) {
+            System.err.println("[Gateway] Error refreshing active barrels: " + e.getMessage());
+        }
+    }
 
     private void updateStatistics(String search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
@@ -200,7 +226,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             }
         }
 
-        // Add average response times for each barrel
         HashMap<String, Double> averageResponseTimes = new HashMap<>();
         for (Map.Entry<String, BarrelStats> entry : responseTimes.entrySet()) {
             String barrelId = entry.getKey();
@@ -211,9 +236,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         currentStats.setTopSearches(topSearches);
         currentStats.setResponseTimes(averageResponseTimes);
 
-        // Now notify all registered listeners about the updated statistics
         try {
-            notifyListeners(); // This sends the updated stats to all listeners
+            notifyListeners();
         } catch (RemoteException e) {
             System.err.println("Failed to notify listeners: " + e.getMessage());
         }
@@ -225,27 +249,19 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     @Override
     public SearchResult getConnections(String url) throws RemoteException {
+        refreshAndSelectBarrel(); // Refresh barrels and select one randomly
+
         if (selectedBarrel == null) {
-            System.out.println("[Gateway] No barrel selected. Attempting reconnection...");
-            try {
-                checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
-                if (selectedBarrel == null) {
-                    System.err.println("[Gateway] No barrels available after reconnection attempt.");
-                    return new SearchResult("No barrel available", Collections.emptyList());
-                }
-            } catch (IOException e) {
-                System.err.println("[Gateway] Error loading barrel properties: " + e.getMessage());
-                return new SearchResult("Error loading barrel properties", Collections.emptyList());
-            }
+            System.out.println("[Gateway] No barrel available after refreshing.");
+            return new SearchResult("No barrel available", Collections.emptyList());
         }
 
         try {
             long startTime = System.nanoTime();
             SearchResult result = selectedBarrel.getConnections(url);
             long endTime = System.nanoTime();
-            double responseTime = (endTime - startTime) / 1_000_000.0; 
+            double responseTime = (endTime - startTime) / 1_000_000.0;
 
-            // Update BarrelStats for the selected barrel
             BarrelStats stats = responseTimes.get(selectedBarrelId);
             stats.addResponseTime(responseTime);
 
@@ -264,19 +280,32 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-
     public synchronized void registerStatisticsListener(IStatistics listener) throws RemoteException {
         listeners.add(listener);
         System.out.println("Client registered for statistics updates.");
     }
 
     private void notifyListeners() throws RemoteException {
-        for (IStatistics listener : listeners) {
+        Iterator<IStatistics> iterator = listeners.iterator();
+        while (iterator.hasNext()) {
+            IStatistics listener = iterator.next();
             try {
                 listener.updateStatistics(currentStats);
+            } catch (RemoteException e) {
+                System.err.println("Failed to notify a listener: " + e.getMessage());
+                iterator.remove();
+            }
+        }
+    }
+
+    public synchronized void broadcastStatistics(SystemStatistics stats) throws RemoteException {
+        for (IStatistics listener : listeners) {
+            try {
+                listener.updateStatistics(stats);
             } catch (RemoteException e) {
                 System.err.println("Failed to notify a listener: " + e.getMessage());
             }
         }
     }
 }
+
