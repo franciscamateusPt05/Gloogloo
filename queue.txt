@@ -3984,3 +3984,6 @@ https://www.uc.pt
 https://www.cnn.pt
 https://www.dn.pt
 https://www.chatgpt.com
+https://www.rtp.pt
+http://www.uc.pt
+http://www.rtp.pt

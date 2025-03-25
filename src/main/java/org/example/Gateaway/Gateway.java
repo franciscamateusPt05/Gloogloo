@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
@@ -13,38 +14,59 @@ import org.example.Statistics.IStatistics;
 import org.example.Statistics.SystemStatistics;
 import org.example.SearchResult;
 
-/**
- * The Gateway class manages communication between clients, the Queue, and active Barrels.
- */
 public class Gateway extends UnicastRemoteObject implements IGateway {
 
-    /** Reference to the selected Barrel */
     private IBarrel selectedBarrel;
-
-    /** Reference to the Queue service */
+    private String selectedBarrelId; // To store the ID of the selected barrel (e.g., "barrel1", "barrel2")
     private IQueue queue;
-
-    /** Random instance for selecting barrels */
     private Random random = new Random();
 
-    /** Paths to the properties files */
+    private static final String GATEWAY_CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
     private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
     private static final String BARREL_CONFIG_FILE = "src/main/java/org/example/Properties/barrel.properties";
-
     private static final long serialVersionUID = 1L;
+
     private final List<IStatistics> listeners = new ArrayList<>();
     private SystemStatistics currentStats;
 
-    /**
-     * Constructs a new Gateway instance.
-     *
-     * @throws RemoteException If an RMI error occurs.
-     */
+    // To store active barrels with their ID
+    private Map<String, IBarrel> activeBarrels = new HashMap<>();
+
     public Gateway() throws RemoteException {
         super();
         this.currentStats = new SystemStatistics(new ArrayList<>(), new HashMap<>(), new HashMap<>());
+    }
+
+    public static void main(String[] args) {
         try {
-            // Load properties
+            Properties prop = new Properties();
+            try (FileInputStream fis = new FileInputStream("src/main/java/org/example/Properties/gateway.properties")) {
+                prop.load(fis);
+            }
+
+            String host = prop.getProperty("rmi.host", "localhost");
+            int port = Integer.parseInt(prop.getProperty("rmi.port", "1099"));
+            String serviceName = prop.getProperty("rmi.service_name", "GatewayService");
+
+            Gateway gateway = new Gateway();
+
+            // Start RMI Registry
+            LocateRegistry.createRegistry(port);
+            Naming.rebind("rmi://" + host + ":" + port + "/" + serviceName, gateway);
+            System.out.println("✅ Gateway is running on rmi://" + host + ":" + port + "/" + serviceName);
+
+            // Initialize services
+            gateway.initialize();
+
+        } catch (Exception e) {
+            System.err.println("Failed to start Gateway: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+    }
+
+    private void initialize() {
+        try {
             Properties queueProp = loadProperties(QUEUE_CONFIG_FILE);
             Properties barrelProp = loadProperties(BARREL_CONFIG_FILE);
 
@@ -53,21 +75,18 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             queue = (IQueue) Naming.lookup(queueUrl);
             System.out.println("Connected to Queue: " + queueUrl);
 
-            // Check available barrels and connect to one of the active barrels
-            checkActiveBarrels(barrelProp);
+            // Check available barrels
+            checkActiveBarrels(barrelProp); // Now properly handles IOException
 
+        } catch (IOException e) {
+            System.err.println("Error loading properties: " + e.getMessage());
+            e.printStackTrace();
         } catch (Exception e) {
-            System.err.println("Failed to connect to Queue or Barrels: " + e.getMessage());
+            System.err.println("An unexpected error occurred during initialization: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    /**
-     * Loads properties from a file.
-     *
-     * @param filePath The path to the properties file.
-     * @return A Properties object with the loaded values.
-     * @throws IOException If an error occurs while reading the file.
-     */
     private Properties loadProperties(String filePath) throws IOException {
         Properties prop = new Properties();
         try (FileInputStream input = new FileInputStream(filePath)) {
@@ -79,34 +98,19 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return prop;
     }
 
-    /**
-     * Generates an RMI URL from properties for a given prefix.
-     *
-     * @param prop   The properties object.
-     * @param prefix The prefix of the service (e.g., "barrel1", "queue").
-     * @return The complete RMI URL.
-     */
     private String getRmiUrl(Properties prop, String prefix) {
         String host = prop.getProperty(prefix + ".rmi.host", "localhost");
         String port = prop.getProperty(prefix + ".rmi.port", "1112");
-        String service = prop.getProperty(prefix + ".rmi.service_name","QueueService");
+        String service = prop.getProperty(prefix + ".rmi.service_name", "QueueService");
 
-        // Validate that none of the values are null
         if (host == null || port == null || service == null) {
-            throw new IllegalArgumentException("Missing RMI configuration for " + prefix + ":\n"
-                    + " - Host: " + host + "\n"
-                    + " - Port: " + port + "\n"
-                    + " - Service: " + service);
+            throw new IllegalArgumentException("Missing RMI configuration for " + prefix);
         }
-
         return "rmi://" + host + ":" + port + "/" + service;
     }
 
-    /**
-     * Checks which barrels are active and connects to one.
-     */
-    private void checkActiveBarrels(Properties prop) {
-        List<IBarrel> availableBarrels = new ArrayList<>();
+    private void checkActiveBarrels(Properties prop) throws IOException {  // Declare throws IOException
+        activeBarrels.clear(); // Clear previous active barrels
 
         for (int i = 1; i <= 2; i++) {
             String barrelPrefix = "barrel" + i;
@@ -114,18 +118,27 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             try {
                 IBarrel barrel = (IBarrel) Naming.lookup(barrelUrl);
-                availableBarrels.add(barrel);
+                activeBarrels.put(barrelPrefix, barrel); // Store active barrel with its ID
                 System.out.println("Connected to active barrel: " + barrelUrl);
             } catch (Exception e) {
                 System.err.println("Barrel not available: " + barrelUrl);
             }
         }
 
-        if (availableBarrels.isEmpty()) {
+        if (activeBarrels.isEmpty()) {
             System.err.println("No active barrels available!");
         } else {
-            selectedBarrel = availableBarrels.get(random.nextInt(availableBarrels.size()));
-            System.out.println("Connected to barrel: " + selectedBarrel);
+            // Randomly select a barrel from the available active barrels
+            selectRandomBarrel();
+        }
+    }
+
+    private void selectRandomBarrel() {
+        List<String> barrelIds = new ArrayList<>(activeBarrels.keySet());
+        if (!barrelIds.isEmpty()) {
+            selectedBarrelId = barrelIds.get(random.nextInt(barrelIds.size())); // Randomly select barrel ID
+            selectedBarrel = activeBarrels.get(selectedBarrelId); // Get the selected barrel reference
+            System.out.println("Connected to selected barrel: " + selectedBarrelId);
         }
     }
 
@@ -144,13 +157,19 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
 
         try {
+            // Dynamically update active barrels if necessary
+            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));  // Ensure barrel properties are reloaded
+
             List<SearchResult> results = selectedBarrel.search(search);
             if (results.isEmpty()) {
-                System.out.println("[Gateway] No results found for : " + search);
+                System.out.println("[Gateway] No results found for: " + search);
             }
-            return selectedBarrel.search(search);
+            return results;
         } catch (RemoteException e) {
             System.err.println("Error during search: " + e.getMessage());
+            return new ArrayList<>();
+        } catch (IOException e) {  // Handle IOException in search as well
+            System.err.println("Error loading barrel properties during search: " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -158,15 +177,20 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     public SearchResult getConnections(String url) throws RemoteException {
         if (selectedBarrel == null) {
             System.err.println("No barrel selected for getting connections.");
-            return new SearchResult(url, List.of());
+            return new SearchResult(url, new ArrayList<>());
         }
 
         try {
-            SearchResult connections = selectedBarrel.getConnections(url);
-            return connections;
+            // Dynamically update active barrels if necessary
+            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));  // Ensure barrel properties are reloaded
+
+            return selectedBarrel.getConnections(url);
         } catch (RemoteException e) {
             System.err.println("Error getting connections: " + e.getMessage());
-            return new SearchResult(url, List.of());
+            return new SearchResult(url, new ArrayList<>());
+        } catch (IOException e) {  // Handle IOException in getConnections
+            System.err.println("Error loading barrel properties during getConnections: " + e.getMessage());
+            return new SearchResult(url, new ArrayList<>());
         }
     }
 
