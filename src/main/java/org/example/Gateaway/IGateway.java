@@ -1,5 +1,6 @@
 package org.example.Gateaway;
 
+import org.example.Barrel.IBarrel;
 import org.example.SearchResult;
 import org.example.Statistics.IStatistics;
 import org.example.Statistics.SystemStatistics;
@@ -7,6 +8,7 @@ import org.example.Statistics.SystemStatistics;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The IGateway interface defines the methods for a remote Gateway object
@@ -54,6 +56,15 @@ public interface IGateway extends Remote {
      */
     public void registerStatisticsListener(IStatistics listener) throws RemoteException;
 
+<<<<<<< HEAD
     void broadcastStatistics(SystemStatistics stats) throws RemoteException;
+=======
+    public void registarBarrel(String rmi) throws RemoteException;
+
+    public void unregisterBarrel(String rmi) throws RemoteException;
+
+    public Map<String, IBarrel> getBarrels() throws RemoteException;
+
+>>>>>>> 3620c1dcdbe324ba458ede38257e9109014491bd
 
 }

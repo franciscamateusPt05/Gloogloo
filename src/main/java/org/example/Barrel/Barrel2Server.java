@@ -10,7 +10,7 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class BarrelServer {
+public class Barrel2Server {
 
     private static final Logger logger = Logger.getLogger(Barrel2Server.class.getName());
 
@@ -28,24 +28,24 @@ public class BarrelServer {
         try {
             // Criar o registro RMI na porta padrão
             logger.info("Criando o registro RMI na porta para o barrel 1...");
-            LocateRegistry.createRegistry(Integer.parseInt(properties.getProperty("barrel1.rmi.port")));
+            LocateRegistry.createRegistry(Integer.parseInt(properties.getProperty("barrel2.rmi.port")));
 
             // Registrar o Barrel 1
-            String barrel1Host = properties.getProperty("barrel1.rmi.host");
-            String barrel1Port = properties.getProperty("barrel1.rmi.port");
+            String barrel1Host = properties.getProperty("barrel2.rmi.host");
+            String barrel1Port = properties.getProperty("barrel2.rmi.port");
 
-            String barrel1ServiceName = properties.getProperty("barrel1.rmi.service_name");
+            String barrel1ServiceName = properties.getProperty("barrel2.rmi.service_name");
             String barrel1RmiUrl = String.format("rmi://%s:%s/%s", barrel1Host, barrel1Port, barrel1ServiceName);
 
-            BarrelImpl barrelService1 = new BarrelImpl("barrel1");
+            BarrelImpl barrelService1 = new BarrelImpl("barrel2");
             Naming.rebind(barrel1RmiUrl, barrelService1);
 
             Properties prop = loadProperties("src/main/java/org/example/Properties/gateway.properties");
-            String gateawayURL= getRmiUrl(prop,"");
+            String gateawayURL= getRmiUrl(prop);
 
             IGateway gateaway= (IGateway) Naming.lookup(gateawayURL);
             gateaway.registarBarrel(barrel1RmiUrl);
-            logger.info("Serviço Barrel 1 registrado em " + barrel1RmiUrl);
+            logger.info("Serviço Barrel 2 registrado em " + barrel1RmiUrl);
             System.out.println("BarrelService1 e BarrelService2 estão em execução...");
 
         } catch (Exception e) {
@@ -64,13 +64,13 @@ public class BarrelServer {
         return prop;
     }
 
-    private static String getRmiUrl(Properties prop, String prefix) {
+    private static String getRmiUrl(Properties prop) {
         String host = prop.getProperty( "rmi.host", "localhost");
         String port = prop.getProperty("rmi.port", "1112");
         String service = prop.getProperty("rmi.service_name", "QueueService");
 
         if (host == null || port == null || service == null) {
-            throw new IllegalArgumentException("Missing RMI configuration for " + prefix);
+            throw new IllegalArgumentException("Missing RMI configuration");
         }
         return "rmi://" + host + ":" + port + "/" + service;
     }
