@@ -2,7 +2,9 @@ package org.example.Gateaway;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
@@ -278,5 +280,28 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                 System.err.println("Failed to notify a listener: " + e.getMessage());
             }
         }
+    }
+
+    public void registarBarrel(String rmi) throws RemoteException {
+        try {
+            IBarrel barrel = (IBarrel) Naming.lookup(rmi);
+            this.activeBarrels.put(rmi, barrel);
+            System.out.println("Barrel registado com sucesso: " + rmi);
+        } catch (NotBoundException | MalformedURLException e) {
+            System.err.println("Erro ao registar o Barrel: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void unregisterBarrel(String rmi) throws RemoteException {
+        if (this.activeBarrels.remove(rmi) != null) {
+            System.out.println("Barrel removido com sucesso: " + rmi);
+        } else {
+            System.err.println("Erro: Barrel não encontrado para remoção: " + rmi);
+        }
+    }
+
+    public Map<String, IBarrel> getBarrels() throws RemoteException{
+        return new HashMap<>(this.activeBarrels);
     }
 }

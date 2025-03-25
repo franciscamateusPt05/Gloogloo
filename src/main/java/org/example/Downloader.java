@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.Gateaway.IGateway;
 import org.example.Queue.IQueue;
 import org.example.Barrel.IBarrel;
 import org.jsoup.Jsoup;
@@ -19,20 +20,17 @@ import java.util.stream.Collectors;
 public class Downloader extends Thread {
     private static final Logger logger = Logger.getLogger(Downloader.class.getName());
     private IQueue queue;
-    private List<IBarrel> barrels;
+    private IGateway gateaway;
+    private Map<String,IBarrel> barrels;
 
     // Variáveis para armazenar as URLs de configuração
     private String queueURL;
-    private String barrel1URL;
-    private String barrel2URL;
-    private String barrel1DbURL;
-    private String barrel2DbURL;
+    private String gateawayURL;
 
-    private boolean sucesso = false;
 
 
     // Caminho do arquivo de propriedades
-    private static final String CONFIG_FILE = "src/main/java/org/example/Properties/barrel.properties";
+    private static final String GATEWAY_CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
     private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
 
     public Downloader() {
@@ -43,23 +41,6 @@ public class Downloader extends Thread {
     // Método para carregar as propriedades a partir do arquivo config.properties
     private synchronized void loadProperties() {
         try {
-            // Carregar as propriedades de barrel.properties
-            Properties rmiProps = new Properties();
-            try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
-                rmiProps.load(fis);
-            } catch (IOException e) {
-                logger.log(Level.SEVERE, "Erro ao carregar o arquivo de propriedades: " + e.getMessage());
-                return;
-            }
-
-
-            // Obter URLs dos Barrels
-            this.barrel1URL = "rmi://" + rmiProps.getProperty("barrel1.rmi.host") + ":" + rmiProps.getProperty("barrel1.rmi.port") + "/" + rmiProps.getProperty("barrel1.rmi.service_name");
-            this.barrel2URL = "rmi://" + rmiProps.getProperty("barrel2.rmi.host") + ":" + rmiProps.getProperty("barrel2.rmi.port") + "/" + rmiProps.getProperty("barrel2.rmi.service_name");
-
-            // Obter URLs dos Bancos de Dados dos Barrels
-            this.barrel1DbURL = rmiProps.getProperty("barrel1.db.url");
-            this.barrel2DbURL = rmiProps.getProperty("barrel2.db.url");
 
             // Carregar as propriedades de queue-config.properties
             Properties queueProps = new Properties();
@@ -71,6 +52,17 @@ public class Downloader extends Thread {
             String port = queueProps.getProperty("rmi.port");
             String serviceName = queueProps.getProperty("rmi.service_name");
             this.queueURL = "rmi://" + host + ":" + port + "/" + serviceName;
+
+            // Carregar as propriedades de queue-config.properties
+            Properties gateProps = new Properties();
+            try (FileInputStream input = new FileInputStream(GATEWAY_CONFIG_FILE)) {
+                gateProps.load(input);
+            }
+            // Obter as URLs dos serviços RMI da Queue
+            host = gateProps.getProperty("rmi.host");
+            port = gateProps.getProperty("rmi.port");
+            serviceName = gateProps.getProperty("rmi.service_name");
+            this.gateawayURL = "rmi://" + host + ":" + port + "/" + serviceName;
 
 
 
@@ -105,52 +97,75 @@ public class Downloader extends Thread {
     // Método para processar o conteúdo da URL com Jsoup
     private synchronized void processContent(String url) throws RemoteException {
         Random random = new Random();
-        IBarrel barrelc = this.barrels.get(random.nextInt(2));
+
+        // Selecionar um barrel aleatório
+        List<String> keys = new ArrayList<>(this.barrels.keySet());
+        if (keys.isEmpty()) {
+            System.out.println("Nenhum barrel disponível.");
+            return;
+        }
+        String randomKey = keys.get(random.nextInt(keys.size()));
+        IBarrel barrelc = this.barrels.get(randomKey);
+
         if (!barrelc.containsUrl(url)) {
             try {
                 System.out.println("Processando URL: " + url);
-                // Conectar-se à URL e obter o conteúdo HTML com Jsoup
-                Document doc = Jsoup.connect(url).get();
 
-                // Extrair o título da página
+                // Obter o conteúdo HTML com Jsoup
+                Document doc = Jsoup.connect(url).get();
                 String title = doc.title();
                 System.out.println(title);
 
-                // Extrair e normalizar palavras-chave do texto da página
+                // Extrair e normalizar palavras-chave do texto
                 String bodyText = doc.body().text();
                 Map<String, Integer> palavras = normalizeWords(bodyText);
 
-
-                String citacao = doc.select("p").first() != null ? doc.select("p").first().text() : doc.title();
+                // Extrair citação
+                String citacao = doc.select("p").first() != null ? doc.select("p").first().text() : title;
                 System.out.println(citacao);
 
-
-                // Extrair todas as URLs do conteúdo
+                // Extrair URLs válidas
                 List<String> listaLinks = doc.select("a[href]").eachAttr("abs:href").stream()
-                        .filter(link -> link.startsWith("http") && // Garante que é um URL válido
-                                !link.contains("#") && // Exclui links com fragmentos
-                                !link.contains("sessionid") && // Exclui links com parâmetros de sessão
-                                !link.contains("login") && // Exclui links de login
-                                !link.contains("404") && // Exclui links de páginas de erro
-                                !link.contains("utm_")).distinct().toList();
-
+                        .filter(link -> link.startsWith("http") &&
+                                !link.contains("#") &&
+                                !link.contains("sessionid") &&
+                                !link.contains("login") &&
+                                !link.contains("404") &&
+                                !link.contains("utm_"))
+                        .distinct()
+                        .toList();
 
                 List<Thread> threads = new ArrayList<>();
                 List<Boolean> results = Collections.synchronizedList(new ArrayList<>());
 
-                for (IBarrel barrel : this.barrels) {
+                // Enviar os dados para cada barrel
+                for (Map.Entry<String, IBarrel> entry : this.barrels.entrySet()) {
+                    String chave = entry.getKey();
+                    IBarrel barrel = entry.getValue();
+
                     Thread thread = new Thread(() -> {
                         try {
-                            boolean resp = barrel.addToIndex(palavras, url, listaLinks, title, citacao);
-                            results.add(resp);
+                            barrel.addToIndex(palavras, url, listaLinks, title, citacao);
+                            synchronized (results) {
+                                results.add(true);
+                            }
                         } catch (RemoteException e) {
+                            try {
+                                this.gateaway.unregisterBarrel(chave);
+                            } catch (RemoteException ex) {
+                                throw new RuntimeException(ex);
+                            }
                             e.printStackTrace();
+                        } catch (SQLException e) {
+                            throw new RuntimeException(e);
                         }
                     });
 
                     threads.add(thread);
                     thread.start();
                 }
+
+                // Esperar todas as threads terminarem
                 for (Thread thread : threads) {
                     try {
                         thread.join();
@@ -159,9 +174,14 @@ public class Downloader extends Thread {
                     }
                 }
 
-                if (results.get(0) && results.get(1)) {
+                // Adicionar os links à queue conforme os resultados
+                if (!results.isEmpty() && results.stream().allMatch(Boolean::booleanValue)) {
                     for (String link : listaLinks) {
-                        if (!this.barrels.get(random.nextInt(2)).containsUrl(link)) {
+                        // Escolher um barrel aleatório para verificar a existência do URL
+                        String keyAleatoria = keys.get(random.nextInt(keys.size()));
+                        IBarrel barrelAleatorio = this.barrels.get(keyAleatoria);
+
+                        if (!barrelAleatorio.containsUrl(link)) {
                             this.queue.addURL(link);
                         }
                     }
@@ -169,20 +189,11 @@ public class Downloader extends Thread {
                     this.queue.addURL(url);
                 }
 
-                for (IBarrel barrelcc : this.barrels) {
-                    barrelcc.setSucess(false);
-                }
-
-
-
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Erro ao processar a URL: " + e.getMessage());
-
             }
-        }
-        else{
-            System.out.println("O "+url+" está na bd: "+ barrelc.containsUrl(url));
-
+        } else {
+            System.out.println("O " + url + " está na BD: " + barrelc.containsUrl(url));
         }
     }
 
@@ -218,18 +229,11 @@ public class Downloader extends Thread {
             // Carregar as propriedades do arquivo
             loadProperties();
 
-            // Conectar à Queue usando a URL configurada no arquivo de propriedades
             this.queue = (IQueue) Naming.lookup(queueURL);
 
-            // Conectar aos Barrels usando as URLs configuradas
-            IBarrel barrel1 = (IBarrel) Naming.lookup(barrel1URL);
-            IBarrel barrel2 = (IBarrel) Naming.lookup(barrel2URL);
-
-            barrel1.setOutroBarrel(barrel2);
-            barrel2.setOutroBarrel(barrel1);
+            this.gateaway = (IGateway) Naming.lookup(gateawayURL);
 
 
-            barrels = Arrays.asList(barrel1, barrel2);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Erro ao conectar à Queue ou aos Barrels: " + e.getMessage());
         }

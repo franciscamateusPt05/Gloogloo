@@ -20,9 +20,7 @@ import org.example.SearchResult;
 public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private static final Logger logger = Logger.getLogger(BarrelImpl.class.getName());
     private Connection conn;
-    private boolean sucess = false;
-    private IBarrel outroBarrel;
-    private String outro;
+
     String rmiUrl;
     String dbUrl;
     String dbUser;
@@ -30,9 +28,9 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
 
 
-    public BarrelImpl(String barrelName, String outro) throws RemoteException {
+    public BarrelImpl(String barrelName) throws RemoteException {
         super();
-        this.outro = outro;
+
         Properties properties = new Properties();
 
         // Carregar propriedades do arquivo
@@ -67,14 +65,8 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     // Método para adicionar uma palavra ao índice associada a uma URL
     @Override
-    public boolean addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException {
-        try {
-            outroBarrel = (IBarrel) Naming.lookup(this.outro);
-        } catch (NotBoundException e) {
-            return false;
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
+    public void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
+
         try {
 
             // Inserir ou atualizar as palavras no banco de dados
@@ -126,27 +118,17 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 }
             }
 
-            outroBarrel.setSucess(true); //Notifico que já foi feito
-
-            long tempoInicial = System.currentTimeMillis();
-            while (System.currentTimeMillis() - tempoInicial < 5000) {
-                if (outroBarrel.isSucess() && this.sucess) {
-                    this.conn.commit();
-                    return true;
-                }
-            }
-            conn.rollback();
-            return false;
+            conn.commit();
         } catch (SQLException e) {
             e.printStackTrace();
             try {
                 if (this.conn != null) {
                     this.conn.rollback();
-                    return false;
+
                 }
             } catch (SQLException ex) {
                 ex.printStackTrace();
-                return false;
+                this.conn.rollback();
             }
             throw new RemoteException("Erro ao adicionar informações ao índice", e);
         }
@@ -254,52 +236,6 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return resposta;
     }
 
-    @Override
-    public IBarrel getOutroBarrel() throws RemoteException {
-        return outroBarrel;
-    }
-
-    @Override
-    public void setOutroBarrel(IBarrel outroBarrel) throws RemoteException {
-        this.outroBarrel = outroBarrel;
-    }
-
-    @Override
-    public boolean FinalizarOpe() throws Exception {
-        try {
-            if (this.sucess && this.outroBarrel.isSucess()) {
-                if (this.conn != null) {
-                    this.conn.commit();
-                }
-                return true;
-            } else {
-                if (this.conn != null) {
-                    this.conn.rollback();
-                }
-                return false;
-            }
-        } catch (SQLException e) {
-            try {
-                if (this.conn != null) {
-                    this.conn.rollback(); // Caso aconteça algum erro, desfaz a transação
-                }
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-            }
-            throw new RemoteException("Erro ao finalizar operação", e);
-        }
-    }
-
-
-    @Override
-    public boolean isSucess() throws RemoteException {
-        return sucess;
-    }
-
-    @Override
-    public void setSucess(boolean sucess) throws RemoteException {
-        this.sucess = sucess;
-    }
 
     @Override
     public List<String> getTopSearches() throws RemoteException {
