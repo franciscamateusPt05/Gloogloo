@@ -296,4 +296,10 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     public void setSucess(boolean sucess) throws RemoteException {
         this.sucess = sucess;
     }
+
+    @Override
+    public List<String> getTopSearches() throws RemoteException {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getTopSearches'");
+    }
 }

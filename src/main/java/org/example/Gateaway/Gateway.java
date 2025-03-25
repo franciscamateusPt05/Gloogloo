@@ -10,6 +10,7 @@ import java.util.*;
 
 import org.example.Barrel.*;
 import org.example.Queue.*;
+import org.example.Statistics.BarrelStats;
 import org.example.Statistics.IStatistics;
 import org.example.Statistics.SystemStatistics;
 import org.example.SearchResult;
@@ -17,7 +18,7 @@ import org.example.SearchResult;
 public class Gateway extends UnicastRemoteObject implements IGateway {
 
     private IBarrel selectedBarrel;
-    private String selectedBarrelId; // To store the ID of the selected barrel (e.g., "barrel1", "barrel2")
+    private String selectedBarrelId;
     private IQueue queue;
     private Random random = new Random();
 
@@ -29,8 +30,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private final List<IStatistics> listeners = new ArrayList<>();
     private SystemStatistics currentStats;
 
-    // To store active barrels with their ID
     private Map<String, IBarrel> activeBarrels = new HashMap<>();
+    private Map<String, BarrelStats> responseTimes = new HashMap<>();
 
     public Gateway() throws RemoteException {
         super();
@@ -40,7 +41,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     public static void main(String[] args) {
         try {
             Properties prop = new Properties();
-            try (FileInputStream fis = new FileInputStream("src/main/java/org/example/Properties/gateway.properties")) {
+            try (FileInputStream fis = new FileInputStream(GATEWAY_CONFIG_FILE)) {
                 prop.load(fis);
             }
 
@@ -50,10 +51,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             Gateway gateway = new Gateway();
 
-            // Start RMI Registry
             LocateRegistry.createRegistry(port);
             Naming.rebind("rmi://" + host + ":" + port + "/" + serviceName, gateway);
-            System.out.println("✅ Gateway is running on rmi://" + host + ":" + port + "/" + serviceName);
+            System.out.println("Gateway is running on rmi://" + host + ":" + port + "/" + serviceName);
 
             // Initialize services
             gateway.initialize();
@@ -62,7 +62,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.err.println("Failed to start Gateway: " + e.getMessage());
             e.printStackTrace();
         }
-
     }
 
     private void initialize() {
@@ -76,7 +75,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.out.println("Connected to Queue: " + queueUrl);
 
             // Check available barrels
-            checkActiveBarrels(barrelProp); // Now properly handles IOException
+            checkActiveBarrels(barrelProp); 
 
         } catch (IOException e) {
             System.err.println("Error loading properties: " + e.getMessage());
@@ -109,16 +108,16 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return "rmi://" + host + ":" + port + "/" + service;
     }
 
-    private void checkActiveBarrels(Properties prop) throws IOException {  // Declare throws IOException
-        activeBarrels.clear(); // Clear previous active barrels
-
+    private void checkActiveBarrels(Properties prop) throws IOException {
+        activeBarrels.clear();
         for (int i = 1; i <= 2; i++) {
             String barrelPrefix = "barrel" + i;
             String barrelUrl = getRmiUrl(prop, barrelPrefix);
 
             try {
                 IBarrel barrel = (IBarrel) Naming.lookup(barrelUrl);
-                activeBarrels.put(barrelPrefix, barrel); // Store active barrel with its ID
+                activeBarrels.put(barrelPrefix, barrel);
+                responseTimes.put(barrelPrefix, new BarrelStats());  // Initialize BarrelStats for each barrel
                 System.out.println("Connected to active barrel: " + barrelUrl);
             } catch (Exception e) {
                 System.err.println("Barrel not available: " + barrelUrl);
@@ -128,7 +127,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         if (activeBarrels.isEmpty()) {
             System.err.println("No active barrels available!");
         } else {
-            // Randomly select a barrel from the available active barrels
             selectRandomBarrel();
         }
     }
@@ -136,8 +134,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private void selectRandomBarrel() {
         List<String> barrelIds = new ArrayList<>(activeBarrels.keySet());
         if (!barrelIds.isEmpty()) {
-            selectedBarrelId = barrelIds.get(random.nextInt(barrelIds.size())); // Randomly select barrel ID
-            selectedBarrel = activeBarrels.get(selectedBarrelId); // Get the selected barrel reference
+            selectedBarrelId = barrelIds.get(random.nextInt(barrelIds.size()));
+            selectedBarrel = activeBarrels.get(selectedBarrelId);
             System.out.println("Connected to selected barrel: " + selectedBarrelId);
         }
     }
@@ -157,10 +155,19 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
 
         try {
-            // Dynamically update active barrels if necessary
-            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));  // Ensure barrel properties are reloaded
+            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
 
+            long startTime = System.nanoTime();
             List<SearchResult> results = selectedBarrel.search(search);
+            long endTime = System.nanoTime();
+            double responseTime = (endTime - startTime) / 1_000_000.0; 
+
+            // Update BarrelStats for the selected barrel
+            BarrelStats stats = responseTimes.get(selectedBarrelId);
+            stats.addResponseTime(responseTime);  // Update the stats with the new response time
+
+            updateStatistics(search, responseTime);
+
             if (results.isEmpty()) {
                 System.out.println("[Gateway] No results found for: " + search);
             }
@@ -168,55 +175,86 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         } catch (RemoteException e) {
             System.err.println("Error during search: " + e.getMessage());
             return new ArrayList<>();
-        } catch (IOException e) {  // Handle IOException in search as well
+        } catch (IOException e) {
             System.err.println("Error loading barrel properties during search: " + e.getMessage());
             return new ArrayList<>();
         }
     }
 
-    public SearchResult getConnections(String url) throws RemoteException {
-        if (selectedBarrel == null) {
-            System.err.println("No barrel selected for getting connections.");
-            return new SearchResult(url, new ArrayList<>());
+    private void updateStatistics(String search, double responseTime) {
+        List<String> topSearches = new ArrayList<>();
+        HashMap<String, Double> response = new HashMap<>();
+        response.put(selectedBarrelId, responseTime);
+
+        for (IBarrel barrel : activeBarrels.values()) {
+            try {
+                List<String> barrelTopSearches = barrel.getTopSearches();
+                topSearches.addAll(barrelTopSearches);
+            } catch (RemoteException e) {
+                System.err.println("Error fetching top searches from barrel: " + e.getMessage());
+            }
         }
 
-        try {
-            // Dynamically update active barrels if necessary
-            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));  // Ensure barrel properties are reloaded
-
-            return selectedBarrel.getConnections(url);
-        } catch (RemoteException e) {
-            System.err.println("Error getting connections: " + e.getMessage());
-            return new SearchResult(url, new ArrayList<>());
-        } catch (IOException e) {  // Handle IOException in getConnections
-            System.err.println("Error loading barrel properties during getConnections: " + e.getMessage());
-            return new SearchResult(url, new ArrayList<>());
+        // Add average response times for each barrel
+        HashMap<String, Double> averageResponseTimes = new HashMap<>();
+        for (Map.Entry<String, BarrelStats> entry : responseTimes.entrySet()) {
+            String barrelId = entry.getKey();
+            BarrelStats stats = entry.getValue();
+            averageResponseTimes.put(barrelId, stats.getAverageResponseTime());
         }
+
+        currentStats.setTopSearches(topSearches);
+        currentStats.setResponseTimes(averageResponseTimes);
     }
 
     public synchronized SystemStatistics getStatistics() throws RemoteException {
         return currentStats;
     }
 
-    public synchronized void registerStatisticsListener(IStatistics listener) throws RemoteException {
-        listeners.add(listener);
-        listener.updateStatistics(currentStats);
+    @Override
+    public SearchResult getConnections(String url) throws RemoteException {
+        if (selectedBarrel == null) {
+            System.err.println("No barrel selected for getConnections.");
+            return new SearchResult("No barrel selected", Collections.emptyList()); 
+        }
+
+        try {
+            checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
+
+            long startTime = System.nanoTime();
+            SearchResult result = selectedBarrel.getConnections(url);
+            long endTime = System.nanoTime();
+            double responseTime = (endTime - startTime) / 1_000_000.0; 
+
+            // Update BarrelStats for the selected barrel
+            BarrelStats stats = responseTimes.get(selectedBarrelId);
+            stats.addResponseTime(responseTime); 
+
+            updateStatistics(url, responseTime);
+
+            if (result == null || result.getUrls().isEmpty()) {
+                return new SearchResult(url, Collections.emptyList());
+            }
+
+            return result;
+        } catch (RemoteException e) {
+            System.err.println("Error during getConnections: " + e.getMessage());
+            return new SearchResult("Error occurred for: " + url, Collections.emptyList());
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new SearchResult("Error occurred for: " + url, Collections.emptyList());
+        }
     }
 
-    public synchronized void updateStatistics(List<String> topSearches, HashMap<String, Integer> barrelSizes, HashMap<String, Double> responseTimes) throws RemoteException {
-        this.currentStats = new SystemStatistics(topSearches, barrelSizes, responseTimes);
-        notifyListeners();
+    @Override
+    public synchronized void registerStatisticsListener(IStatistics listener) throws RemoteException {
+        listeners.add(listener);
+        System.out.println("Client registered for statistics updates.");
     }
 
     private void notifyListeners() throws RemoteException {
-        System.out.println("Notifying " + listeners.size() + " listeners.");
         for (IStatistics listener : listeners) {
-            try {
-                listener.updateStatistics(currentStats);
-                System.out.println("Listener notified.");
-            } catch (RemoteException e) {
-                System.err.println("Failed to notify a listener: " + e.getMessage());
-            }
+            listener.updateStatistics(currentStats);
         }
     }
 }

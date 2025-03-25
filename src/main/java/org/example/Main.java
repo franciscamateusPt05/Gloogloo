@@ -106,6 +106,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             case 1:
                 System.out.println(LINE_BREAK + "\nInsert URL");
                 insertURL();
+                System.out.println("URL inserted into Queue");
                 break;
             case 2:
                 System.out.println(LINE_BREAK + "\nSearch");

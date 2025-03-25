@@ -48,5 +48,7 @@ public interface IBarrel extends Remote {
     boolean isSucess() throws RemoteException;
 
     void setSucess(boolean sucess) throws RemoteException;
+
+    List<String> getTopSearches() throws RemoteException;
 }
 
