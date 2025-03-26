@@ -78,7 +78,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             System.out.println("No statistics available yet.");
         }
 
-        System.out.println("[0] Exit Administrative Page");
+        System.out.println("\nPress any key to Exit Administrative Page");
 
         try {
             String input = null;
@@ -89,13 +89,9 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             }
 
             if (input != null) {
-                if (input.equals("0")) {
-                    System.out.println("Exiting Administrative Page...");
-                } else {
-                    System.out.println("Invalid input. Please enter [0] to exit.");
-                }
+                System.out.println("\nExiting Administrative Page...");
             } else {
-                System.out.println("No input available. Exiting.");
+                System.out.println("\nNo input available. Exiting.");
             }
         } catch (NoSuchElementException | IllegalStateException e) {
             System.out.println("Error reading input: " + e.getMessage());

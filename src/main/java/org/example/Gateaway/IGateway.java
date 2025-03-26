@@ -56,15 +56,13 @@ public interface IGateway extends Remote {
      */
     public void registerStatisticsListener(IStatistics listener) throws RemoteException;
 
-<<<<<<< HEAD
     void broadcastStatistics(SystemStatistics stats) throws RemoteException;
-=======
+    
     public void registarBarrel(String rmi) throws RemoteException;
 
     public void unregisterBarrel(String rmi) throws RemoteException;
 
     public Map<String, IBarrel> getBarrels() throws RemoteException;
 
->>>>>>> 3620c1dcdbe324ba458ede38257e9109014491bd
 
 }

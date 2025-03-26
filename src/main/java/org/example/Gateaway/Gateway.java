@@ -111,27 +111,33 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
     private void checkActiveBarrels(Properties prop) throws IOException {
-        activeBarrels.clear();
-        for (int i = 1; i <= 2; i++) {
+        // Do NOT clear responseTimes to persist old stats
+        activeBarrels.clear(); // Reset only active barrels, not response times
+        
+        for (int i = 1; i <= 2; i++) { // Assuming 2 barrels for this example
             String barrelPrefix = "barrel" + i;
             String barrelUrl = getRmiUrl(prop, barrelPrefix);
-
+    
             try {
                 IBarrel barrel = (IBarrel) Naming.lookup(barrelUrl);
                 activeBarrels.put(barrelPrefix, barrel);
-                responseTimes.put(barrelPrefix, new BarrelStats());  // Initialize BarrelStats for each barrel
+    
+                // Initialize stats ONLY if it doesn't exist
+                responseTimes.putIfAbsent(barrelPrefix, new BarrelStats());  
+    
                 System.out.println("Connected to active barrel: " + barrelUrl);
             } catch (Exception e) {
                 System.err.println("Barrel not available: " + barrelUrl);
             }
         }
-
+    
         if (activeBarrels.isEmpty()) {
             System.err.println("No active barrels available!");
         } else {
-            selectRandomBarrel(); // Ensure a barrel is selected after checking active barrels
+            selectRandomBarrel(); // Ensure a barrel is selected
         }
     }
+    
 
     private void selectRandomBarrel() {
         List<String> barrelIds = new ArrayList<>(activeBarrels.keySet());
