@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Downloader extends Thread {
+public class Downloader {
     private static final Logger logger = Logger.getLogger(Downloader.class.getName());
     private IQueue queue;
     private IGateway gateaway;
@@ -30,7 +30,7 @@ public class Downloader extends Thread {
     // Caminho do arquivo de propriedades
     private static final String GATEWAY_CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
     private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
-    private static final String STOP_WORDS_FILE = "src/main/java/org/example/stopwords.txt";
+    private static final String STOP_WORDS_FILE = "stopwords.txt";
 
     private Set<String> stopWords;  // Set to store stop words
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -39,7 +39,7 @@ public class Downloader extends Thread {
         this.stopWords = new HashSet<>();
         conectar();
         startStopWordsUpdater();
-        start();
+
     }
 
     // Método para carregar as propriedades a partir do arquivo config.properties
@@ -70,28 +70,24 @@ public class Downloader extends Thread {
         }
     }
 
-    @Override
     public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
-            try {
-                String url = queue.getURL();
-                if (url != null) {
-                    processContent(url);
-                } else {
-                    System.out.println("Fila vazia. Aguardando novas URLs...");
-                }
-                Thread.sleep(2000);
-            } catch (RemoteException e) {
-                logger.log(Level.SEVERE, "Erro ao obter URL da fila: " + e.getMessage());
-                break;
-            } catch (InterruptedException e) {
-                System.out.println("Downloader foi interrompido.");
-                break;
+        try {
+            String url = queue.getURL();
+            if (url != null) {
+                processContent(url);
+            } else {
+                System.out.println("Fila vazia. Aguardando novas URLs...");
             }
+            Thread.sleep(2000);
+        } catch (RemoteException e) {
+            logger.log(Level.SEVERE, "Erro ao obter URL da fila: " + e.getMessage());
+        } catch (InterruptedException e) {
+            System.out.println("Downloader foi interrompido.");
         }
     }
 
     private synchronized void processContent(String url) throws RemoteException {
+        this.barrels=this.gateaway.getBarrels();
         Random random = new Random();
         List<String> keys = new ArrayList<>(this.barrels.keySet());
         if (keys.isEmpty()) {
@@ -129,10 +125,11 @@ public class Downloader extends Thread {
                         } catch (Exception e) {
                             try {
                                 this.gateaway.unregisterBarrel(chave);
+                                System.out.println("Foi removido a URL: " + chave);
                             } catch (Exception ex) {
-                                ex.printStackTrace();
+//                                ex.printStackTrace();
                             }
-                            e.printStackTrace();
+//                            e.printStackTrace();
                         }
                     });
                     threads.add(thread);
@@ -142,7 +139,7 @@ public class Downloader extends Thread {
                     thread.join();
                 }
 
-                if (!results.isEmpty() && results.stream().allMatch(Boolean::booleanValue)) {
+                if (!results.isEmpty() && results.stream().anyMatch(Boolean::booleanValue)) {
                     for (String link : listaLinks) {
                         String keyAleatoria = keys.get(random.nextInt(keys.size()));
                         IBarrel barrelAleatorio = this.barrels.get(keyAleatoria);
@@ -220,14 +217,31 @@ public class Downloader extends Thread {
         }
     }
 
+
+    private static volatile boolean running = true;
     // Main method remains unchanged
-    public static void main(String[] args) {
-        try {
-            for (int i = 0; i < 10; i++) {
-                new Downloader();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+    public static void main(String[] args) throws InterruptedException {
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("\nCtrl + C detetado! A terminar...");
+            running = false; // Altera a variável de controlo
+        }));
+//
+//        try {
+//            for (int i = 0; i < 5; i++) {
+//                new Downloader().run();
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+
+
+        // Simulação de ciclo contínuo
+        while (running) {
+            System.out.println("O programa está a correr...");
+            new Downloader().run();
         }
+
+        System.out.println("Programa terminado.");
     }
 }
