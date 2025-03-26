@@ -100,15 +100,20 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
     private String getRmiUrl(Properties prop, String prefix) {
-        String host = prop.getProperty(prefix + ".rmi.host");
-        String port = prop.getProperty(prefix + ".rmi.port");
+        String host = prop.getProperty(prefix + ".rmi.host", "localhost");
+        String port = prop.getProperty(prefix + ".rmi.port", "1112");
         String service = prop.getProperty(prefix + ".rmi.service_name", "QueueService");
-
+    
+        System.out.println("Host: " + host);
+        System.out.println("Port: " + port);
+        System.out.println("Service: " + service); 
+    
         if (host == null || port == null || service == null) {
             throw new IllegalArgumentException("Missing RMI configuration for " + prefix);
         }
         return "rmi://" + host + ":" + port + "/" + service;
     }
+    
 
     private void checkActiveBarrels(Properties prop) throws IOException {
         // Do NOT clear responseTimes to persist old stats
@@ -156,7 +161,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         System.out.println("URL inserted successfully into Queue");
     }
 
-    public List<SearchResult> search(String search) throws RemoteException {
+    public List<SearchResult> search(String[] search) throws RemoteException {
         // Refresh barrels and select a random barrel every time a search is performed
         refreshAndSelectBarrel();
 
@@ -220,7 +225,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-    private void updateStatistics(String search, double responseTime) {
+    private void updateStatistics(String[] search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
         HashMap<String, Double> response = new HashMap<>();
         response.put(selectedBarrelId, responseTime);
@@ -281,7 +286,10 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             BarrelStats stats = responseTimes.get(selectedBarrelId);
             stats.addResponseTime(responseTime);
 
-            updateStatistics(url, responseTime);
+            String[] url_ = new String[1];
+            url_[0] = url;
+
+            updateStatistics(url_, responseTime);
 
             if (result == null || result.getUrls().isEmpty()) {
                 return new SearchResult(url, Collections.emptyList());

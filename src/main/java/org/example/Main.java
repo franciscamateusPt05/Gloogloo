@@ -1,15 +1,19 @@
 package org.example;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Scanner;
+import java.util.Set;
 
 import org.example.Gateaway.*;
 import org.example.Statistics.IStatistics;
@@ -19,6 +23,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static final String LINE_BREAK = "=".repeat(30);
     private static final String CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
+    private static final String STOP_WORDS_FILE = "stopwords.txt";
     private static Scanner scanner = new Scanner(System.in);
     private static IGateway gateway;
     private static SystemStatistics latestStats;  // Store the latest statistics
@@ -176,8 +181,24 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 System.out.println("Search query cannot be empty.");
                 return;
             }
+            Set<String> stopwords = loadStopWords();
 
-            List<SearchResult> results = gateway.search(searchQuery);
+            String[] search;
+            
+            search = searchQuery.split(" ");
+
+            String[] filteredSearch = new String[search.length];
+            int filteredCount = 0;
+
+            // Iterate over each word in the search query
+            for (String word : search) {
+            if (!stopwords.contains(word.trim())) {
+            filteredSearch[filteredCount] = word.trim();
+            filteredCount++;
+            }
+}
+
+            List<SearchResult> results = gateway.search(filteredSearch);
 
             if (results.isEmpty()) {
                 System.out.println("No results found for: " + searchQuery);
@@ -311,4 +332,16 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             openAdministrativePage(); 
         }
     }
+
+    private static Set<String> loadStopWords() throws IOException {
+        Set<String> words = new HashSet<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(STOP_WORDS_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                words.add(line.trim());
+            }
+        }
+        return words;
+    }
+
 }

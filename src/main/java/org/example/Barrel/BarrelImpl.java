@@ -136,9 +136,8 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     }
 
-    public List<SearchResult> search(String words) throws RemoteException {
+    public List<SearchResult> search(String[] words) throws RemoteException {
         List<SearchResult> results = new ArrayList<>();
-        String[] terms = words.split("\\s+"); // Split by whitespace to get individual terms
         StringBuilder queryBuilder = new StringBuilder();
     
         queryBuilder.append("SELECT u.url, u.titulo, u.citacao, u.ranking, ")
@@ -151,7 +150,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     .append("ORDER BY u.ranking DESC, COUNT(w.word) DESC");
     
         try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
-            Array array = this.conn.createArrayOf("text", terms);
+            Array array = this.conn.createArrayOf("text", words);
             stmt.setArray(1, array);
     
             try (ResultSet rs = stmt.executeQuery()) {

@@ -31,7 +31,7 @@ public interface IGateway extends Remote {
      * @return the searched results as a SearchResult object
      * @throws RemoteException if a remote communication error occurs
      */
-    public List<SearchResult> search(String search) throws RemoteException;
+    public List<SearchResult> search(String[] search) throws RemoteException;
 
     /**
      * Searches for all URL connections of the given URL.

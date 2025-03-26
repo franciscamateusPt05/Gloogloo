@@ -25,7 +25,7 @@ public interface IBarrel extends Remote {
          * @return Lista de URLs onde a palavra foi encontrada.
          * @throws RemoteException Se ocorrer um erro na comunicação RMI.
          */
-    List<SearchResult> search(String search) throws RemoteException;
+    List<SearchResult> search(String[] search) throws RemoteException;
 
     /**
      * Searches for all URL connections of the given URL.
