@@ -1,32 +1,34 @@
 package org.example.Statistics;
 
-/**
- * Helper class to track statistics for each barrel.
- * It stores the total response time and the count of requests.
- */
+import java.util.ArrayList;
+import java.util.List;
+
+
 public class BarrelStats {
-    private double totalResponseTime;
-    private int requestCount;
+    private List<Double> responseTimes;
+    private long barrelSize;  // Size of the barrel, in whatever metric you need (e.g., number of items)
 
     public BarrelStats() {
-        this.totalResponseTime = 0.0;
-        this.requestCount = 0;
+        this.responseTimes = new ArrayList<>();
+        this.barrelSize = 0;  // Initialize to zero
     }
 
+    // Method to set or update the size of the barrel
+    public void setBarrelSize(long size) {
+        this.barrelSize = size;
+    }
+
+    public long getBarrelSize() {
+        return this.barrelSize;
+    }
+
+    // Add response time to the list
     public void addResponseTime(double responseTime) {
-        this.totalResponseTime += responseTime;
-        this.requestCount++;
+        responseTimes.add(responseTime);
     }
 
+    // Get average response time
     public double getAverageResponseTime() {
-        return requestCount > 0 ? totalResponseTime / requestCount : 0.0;
-    }
-
-    public int getRequestCount() {
-        return requestCount;
-    }
-
-    public double getTotalResponseTime() {
-        return totalResponseTime;
+        return responseTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
     }
 }

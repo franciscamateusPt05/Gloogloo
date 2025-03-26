@@ -71,9 +71,9 @@ public class Main extends UnicastRemoteObject implements IStatistics {
     private static void openAdministrativePage() {
         if (latestStats != null) {
             System.out.println("Current Statistics:");
-            System.out.println("Top Searches: " + latestStats.getTopSearches());
-            System.out.println("Barrel Sizes: " + latestStats.getBarrelIndexSizes());
-            System.out.println("Response Times: " + latestStats.getAverageResponseTimes());
+            System.out.println("Top 10 Searches: " + latestStats.getTopSearches());
+            System.out.println("Active Barrels and Their Sizes: " + latestStats.getBarrelIndexSizes());
+            System.out.println("Average Response Times per Barrel: " + latestStats.getAverageResponseTimes());
         } else {
             System.out.println("No statistics available yet.");
         }

@@ -259,4 +259,25 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return topSearches;
     }
 
+    public int getSize() throws RemoteException {
+
+    String query = "SELECT COUNT(*) FROM word_url";  // Query to count rows in word_url table
+
+        try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+
+            // If there is a result, return the count
+            if (rs.next()) {
+                return rs.getInt(1);  // Return the count from the query result
+            } else {
+                return 0;  // Return 0 if no rows are found
+            }
+        } catch (SQLException e) {
+            // Handle exceptions, such as connection errors or SQL issues
+            e.printStackTrace();
+            throw new RemoteException("Error querying the database", e);
+        }
+    }
+
 }

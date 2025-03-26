@@ -39,5 +39,7 @@ public interface IBarrel extends Remote {
     boolean containsUrl(String url) throws RemoteException;
 
     List<String> getTopSearches() throws RemoteException;
+
+    int getSize() throws RemoteException;
 }
 

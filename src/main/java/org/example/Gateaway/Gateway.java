@@ -224,32 +224,40 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         List<String> topSearches = new ArrayList<>();
         HashMap<String, Double> response = new HashMap<>();
         response.put(selectedBarrelId, responseTime);
-
-        for (IBarrel barrel : activeBarrels.values()) {
-            try {
-                List<String> barrelTopSearches = barrel.getTopSearches();
-                topSearches.addAll(barrelTopSearches);
-            } catch (RemoteException e) {
-                System.err.println("Error fetching top searches from barrel: " + e.getMessage());
-            }
+    
+        // Add barrel sizes to the statistics
+        HashMap<String, Integer> barrelSizes = new HashMap<>();
+        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+            String barrelId = barrelEntry.getKey();
+            BarrelStats stats = responseTimes.get(barrelId);
+            
+            // Let's assume each barrel's size is stored in the stats or fetched from somewhere
+            int barrelSize = (int) (stats != null ? stats.getBarrelSize() : 0);  // Example method to fetch barrel size
+            barrelSizes.put(barrelId, barrelSize);  // Put size info in the map
         }
-
+    
+        // Add average response times to the statistics
         HashMap<String, Double> averageResponseTimes = new HashMap<>();
         for (Map.Entry<String, BarrelStats> entry : responseTimes.entrySet()) {
             String barrelId = entry.getKey();
             BarrelStats stats = entry.getValue();
             averageResponseTimes.put(barrelId, stats.getAverageResponseTime());
         }
-
+    
+        // Set the updated data to currentStats
         currentStats.setTopSearches(topSearches);
         currentStats.setResponseTimes(averageResponseTimes);
-
+        currentStats.setBarrelIndexSizes(barrelSizes);  // Add barrel sizes
+    
+        // Notify listeners after updating
         try {
-            notifyListeners();
+            notifyListeners();  // Notify clients of the updated stats
         } catch (RemoteException e) {
             System.err.println("Failed to notify listeners: " + e.getMessage());
         }
     }
+    
+    
 
     public synchronized SystemStatistics getStatistics() throws RemoteException {
         return currentStats;
