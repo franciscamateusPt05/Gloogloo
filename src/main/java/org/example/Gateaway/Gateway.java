@@ -100,8 +100,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
     private String getRmiUrl(Properties prop, String prefix) {
-        String host = prop.getProperty(prefix + ".rmi.host", "localhost");
-        String port = prop.getProperty(prefix + ".rmi.port", "1112");
+        String host = prop.getProperty(prefix + ".rmi.host");
+        String port = prop.getProperty(prefix + ".rmi.port");
         String service = prop.getProperty(prefix + ".rmi.service_name", "QueueService");
 
         if (host == null || port == null || service == null) {

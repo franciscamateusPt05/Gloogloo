@@ -284,7 +284,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
      public Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException {
         Map<String, Integer> frequentWords = new HashMap<>();
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
-            String query = "SELECT word, frequency FROM words ORDER BY frequency DESC LIMIT ?";
+            String query = "SELECT word, frequency FROM words ORDER BY frequency DESC LIMIT 10";
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
                 stmt.setInt(1, limit);
                 ResultSet rs = stmt.executeQuery();
