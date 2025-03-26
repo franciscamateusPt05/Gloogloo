@@ -262,7 +262,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
     
-    
 
     public synchronized SystemStatistics getStatistics() throws RemoteException {
         return currentStats;
@@ -337,6 +336,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             IBarrel barrel = (IBarrel) Naming.lookup(rmi);
             this.activeBarrels.put(rmi, barrel);
             System.out.println("Barrel registado com sucesso: " + rmi);
+
+            //Sincronização
         } catch (NotBoundException | MalformedURLException e) {
             System.err.println("Erro ao registar o Barrel: " + e.getMessage());
             throw new RuntimeException(e);
@@ -349,6 +350,10 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         } else {
             System.err.println("Erro: Barrel não encontrado para remoção: " + rmi);
         }
+    }
+
+    public void sincronizar(String rmi) throws RemoteException {
+
     }
 
     public Map<String, IBarrel> getBarrels() throws RemoteException{
