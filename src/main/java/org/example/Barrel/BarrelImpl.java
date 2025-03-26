@@ -10,6 +10,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.sql.*;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -280,4 +281,22 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
+     public Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException {
+        Map<String, Integer> frequentWords = new HashMap<>();
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
+            String query = "SELECT word, frequency FROM words ORDER BY frequency DESC LIMIT ?";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setInt(1, limit);
+                ResultSet rs = stmt.executeQuery();
+                
+                while (rs.next()) {
+                    frequentWords.put(rs.getString("word"), rs.getInt("frequency"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RemoteException("Database error while fetching frequent words", e);
+        }
+        return frequentWords;
+    }
 }
