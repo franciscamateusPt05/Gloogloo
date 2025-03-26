@@ -8,8 +8,11 @@ import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.text.Normalizer;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Scanner;
@@ -181,10 +184,10 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 System.out.println("Search query cannot be empty.");
                 return;
             }
-            Set<String> stopwords = loadStopWords();
+            searchQuery = normalizeWords(searchQuery);
 
+            Set<String> stopwords = loadStopWords();
             String[] search;
-            
             search = searchQuery.split(" ");
 
             String[] filteredSearch = new String[search.length];
@@ -342,6 +345,14 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             }
         }
         return words;
+    }
+
+    private static String normalizeWords(String text) {
+        text = Normalizer.normalize(text, Normalizer.Form.NFD);
+        text = text.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
+        text = text.replaceAll("[\\p{Punct}]", "").toLowerCase();
+
+        return text;
     }
 
 }
