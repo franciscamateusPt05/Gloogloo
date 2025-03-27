@@ -1,18 +1,13 @@
 package org.example;
 
-import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.text.Normalizer;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Scanner;
@@ -26,7 +21,6 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static final String LINE_BREAK = "=".repeat(30);
     private static final String CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
-    private static final String STOP_WORDS_FILE = "stopwords.txt";
     private static Scanner scanner = new Scanner(System.in);
     private static IGateway gateway;
     private static SystemStatistics latestStats;  // Store the latest statistics
@@ -186,7 +180,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             }
             searchQuery = normalizeWords(searchQuery);
 
-            Set<String> stopwords = loadStopWords();
+            Set<String> stopwords = gateway.getStopwords();
             String[] search;
             search = searchQuery.split(" ");
 
@@ -334,17 +328,6 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             System.out.println("\n--- Statistics Updated ---");
             openAdministrativePage(); 
         }
-    }
-
-    private static Set<String> loadStopWords() throws IOException {
-        Set<String> words = new HashSet<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(STOP_WORDS_FILE))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                words.add(line.trim());
-            }
-        }
-        return words;
     }
 
     private static String normalizeWords(String text) {

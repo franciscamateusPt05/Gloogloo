@@ -354,5 +354,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     public Map<String, IBarrel> getBarrels() throws RemoteException{
         return new HashMap<>(this.activeBarrels);
     }
+
+    public Set<String> getStopwords() throws RemoteException {
+        if (queue != null) {
+            return queue.getStopwords();
+        }
+        throw new RemoteException("QueueServer not connected.");
+    }
 }
 

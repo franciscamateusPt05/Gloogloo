@@ -30,9 +30,8 @@ public class Downloader extends Thread {
     // Caminho do arquivo de propriedades
     private static final String GATEWAY_CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
     private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
-    private static final String STOP_WORDS_FILE = "src/main/java/org/example/stopwords.txt";
 
-    private Set<String> stopWords;  // Set to store stop words
+    private Set<String> stopWords; 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     public Downloader() {
@@ -178,36 +177,17 @@ public class Downloader extends Thread {
     private void startStopWordsUpdater() {
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                Set<String> newStopWords = loadStopWords();
+                Set<String> newStopWords = queue.getStopwords();
                 if (newStopWords.isEmpty()) {
                     System.out.println("stopwords.txt está vazio. Aguardando 5 minutos...");
                 } else {
                     stopWords = newStopWords;
                     System.out.println("Stop words atualizadas.");
-                    sendStopWordsToDatabase();
                 }
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Erro ao carregar stop words: " + e.getMessage());
             }
         }, 0, 5, TimeUnit.MINUTES);
-    }
-
-    // Load stop words from stopwords.txt
-    private Set<String> loadStopWords() throws IOException {
-        Set<String> words = new HashSet<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(STOP_WORDS_FILE))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                words.add(line.trim());
-            }
-        }
-        return words;
-    }
-
-    // Send stop words to the database (placeholder method)
-    private void sendStopWordsToDatabase() {
-        // Placeholder for your database logic to send the stop words.
-        System.out.println("Sending stop words to database...");
     }
 
     public void conectar() {

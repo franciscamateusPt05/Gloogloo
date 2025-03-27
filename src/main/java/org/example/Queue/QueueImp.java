@@ -12,6 +12,7 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
     private static String FILE_NAME;
     private static int MAX_SIZE;
     private final Queue<String> queue;
+    private final Set<String> stopwords;
 
     static {
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
@@ -25,9 +26,10 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         }
     }
 
-    protected QueueImp() throws RemoteException {
+    protected QueueImp(Set<String> stopwords) throws RemoteException {
         super();
         this.queue = new LinkedList<>();
+        this.stopwords = stopwords;
     }
 
     @Override
@@ -78,5 +80,9 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         } catch (IOException e) {
             System.err.println("Erro ao guardar a queue: " + e.getMessage());
         }
+    }
+
+    public Set<String> getStopwords() {
+        return stopwords;
     }
 }

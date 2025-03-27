@@ -2,9 +2,6 @@ package org.example.Barrel;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.rmi.Naming;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.*;
@@ -145,9 +142,11 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     .append("FROM word_url w ")
                     .append("JOIN urls u ON w.url = u.url ")
                     .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
-                    .append("WHERE w.word = ANY (?) ")
+                    .append("WHERE w.word IN (?) ")  // Ensure the URL contains any of the search terms
                     .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
-                    .append("ORDER BY u.ranking DESC, COUNT(w.word) DESC");
+                    .append("HAVING COUNT(DISTINCT w.word) = ? ")  // Ensure all terms are present
+                    .append("ORDER BY u.ranking DESC, COUNT(w.word) DESC;");
+
     
         try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
             Array array = this.conn.createArrayOf("text", words);
@@ -195,9 +194,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
-        String query = "SELECT to_url FROM url_links WHERE from_url = ? " +
-                       "UNION " +
-                       "SELECT from_url FROM url_links WHERE to_url = ?";
+        String query = "SELECT from_url FROM url_links WHERE to_url = ?;";
     
         try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
     
@@ -283,7 +280,18 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
      public Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException {
         Map<String, Integer> frequentWords = new HashMap<>();
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
-            String query = "SELECT word, frequency FROM words ORDER BY frequency DESC LIMIT 10";
+            String query = new StringBuilder()
+                    .append("WITH word_frequencies AS (")
+                    .append("    SELECT w.word, SUM(wu.frequency) AS total_frequency ")
+                    .append("    FROM word_url wu ")
+                    .append("    JOIN word w ON wu.word = w.word ")
+                    .append("    GROUP BY w.word ")
+                    .append(") ")
+                    .append("SELECT word, total_frequency ")
+                    .append("FROM word_frequencies ")
+                    .append("ORDER BY total_frequency DESC ")
+                    .append("LIMIT (SELECT CEIL(COUNT(*) * 0.07) FROM word);")
+                    .toString();
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
                 stmt.setInt(1, limit);
                 ResultSet rs = stmt.executeQuery();
