@@ -21,17 +21,18 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static final String LINE_BREAK = "=".repeat(30);
     private static final String CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
-    private static Scanner scanner = new Scanner(System.in);
     private static IGateway gateway;
     private static SystemStatistics latestStats;  // Store the latest statistics
 
     private static int menuOption;
-    
+
     public Main() throws RemoteException {
         super();
     }
 
     public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);  // Create a single scanner
+
         System.out.println(LINE_BREAK);
         System.out.println("Client connecting...");
 
@@ -55,7 +56,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
         boolean running = true;
         while (running) {
-            menuOption = showMenu();
+            menuOption = showMenu(scanner);  // Pass the scanner here
             if (menuOption == 0) {
                 disconnect();
                 running = false;
@@ -68,37 +69,31 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 System.out.println("RMI error: " + e.getMessage());
             }
         }
+
+        scanner.close();  // Close scanner at the end of the program
     }
 
     private static void openAdministrativePage() {
-        if (latestStats != null) {
-            System.out.println("Current Statistics:");
-            System.out.println("Top 10 Searches: " + latestStats.getTopSearches());
-            System.out.println("Active Barrels and Their Sizes: " + latestStats.getBarrelIndexSizes());
-            System.out.println("Average Response Times per Barrel: " + latestStats.getAverageResponseTimes());
-        } else {
-            System.out.println("No statistics available yet.");
-        }
-
-        System.out.println("\nPress any key to Exit Administrative Page");
-
         try {
-            String input = null;
-            
-            // Check if there is more input available
-            if (scanner.hasNextLine()) {
-                input = scanner.nextLine().trim();
-            }
-
-            if (input != null) {
-                System.out.println("\nExiting Administrative Page...");
+            SystemStatistics stats = gateway.getStatistics();  // Request the current stats from the Gateway
+            if (stats != null) {
+                System.out.println("Current Statistics:");
+                System.out.println("Top 10 Searches: " + stats.getTopSearches());
+                System.out.println("Active Barrels and Their Sizes: " + stats.getBarrelIndexSizes());
+                System.out.println("Average Response Times per Barrel: " + stats.getAverageResponseTimes());
             } else {
-                System.out.println("\nNo input available. Exiting.");
+                System.out.println("No statistics available yet.");
             }
-        } catch (NoSuchElementException | IllegalStateException e) {
-            System.out.println("Error reading input: " + e.getMessage());
+        } catch (RemoteException e) {
+            System.out.println("Error fetching statistics: " + e.getMessage());
         }
+    
+        System.out.println("\nPress any key to Exit Administrative Page");
+    
+        Scanner scanner = new Scanner(System.in);
+        scanner.nextLine();
     }
+    
 
     private static Properties loadProperties() throws IOException {
         Properties properties = new Properties();
@@ -108,7 +103,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         return properties;
     }
 
-    private static int showMenu() {
+    private static int showMenu(Scanner scanner) {
         int returnValue = -1;
 
         while (returnValue == -1) {
@@ -189,11 +184,11 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
             // Iterate over each word in the search query
             for (String word : search) {
-            if (!stopwords.contains(word.trim())) {
-            filteredSearch[filteredCount] = word.trim();
-            filteredCount++;
+                if (!stopwords.contains(word.trim())) {
+                    filteredSearch[filteredCount] = word.trim();
+                    filteredCount++;
+                }
             }
-}
 
             List<SearchResult> results = gateway.search(filteredSearch);
 
@@ -219,8 +214,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 System.out.println(LINE_BREAK);
                 System.out.println("\nPage " + currentPage + " of " + totalPages + "\n");
 
-                // Safe iteration to avoid IndexOutOfBounds
-                for (int i = start; i < end && i < results.size(); i++) {
+                for (int i = start; i < Math.min(end, results.size()); i++) {
                     SearchResult result = results.get(i);
                     System.out.println("URL: " + result.getUrl());
                     System.out.println("Title: " + result.getTitle());
@@ -229,6 +223,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
                 }
 
                 System.out.println("[P] Previous Page | [N] Next Page | [0] Return to Menu");
+                Scanner scanner = new Scanner(System.in);  // Use a separate scanner for this method
                 String input = scanner.nextLine().trim().toUpperCase();
 
                 if (input.equals("N")) {
@@ -256,9 +251,10 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             System.err.println("An unexpected error occurred: " + e.getMessage());
         }
     }
-    
+
     private static void consultURLConnections() {
         System.out.println("Input a URL or enter 0 to return:");
+        Scanner scanner = new Scanner(System.in);  // Use a separate scanner for this method
         String input = scanner.nextLine().trim();
 
         if (input.equals("0")) {
@@ -270,7 +266,17 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             try {
                 // Process the URL input (e.g., search, retrieve data, etc.)
                 System.out.println("Processing the URL: " + input);
-                // Add your URL handling code here
+                
+                SearchResult results = gateway.getConnections(input);
+                List<String> urls = results.getUrls();
+
+                if(urls.isEmpty())
+                    System.out.println("Results not found");
+
+                for (String url : urls) {
+                    System.out.println(url);
+                }
+
             } catch (Exception e) {
                 System.out.println("An error occurred while processing the URL.");
                 e.printStackTrace();
@@ -283,6 +289,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
     private static String readURL() {
         try {
             System.out.println("Input a URL or enter 0 to return:");
+            Scanner scanner = new Scanner(System.in);  // Use a separate scanner for this method
             String input = scanner.nextLine().trim();
 
             if (input.equals("0"))
@@ -298,7 +305,6 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         return readURL();
     }
 
-    // URL validation method (simple example)
     private static boolean isValidURL(String url) {
         String regex = "^(https?|ftp)://[^\s/$.?#].[^\s]*$";
         return url.matches(regex);
@@ -306,8 +312,10 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static String readSearch() {
         try {
+            Scanner scanner = new Scanner(System.in);  // Use a separate scanner for this method
             System.out.print("Search terms: ");
-            return scanner.nextLine();
+            String read = scanner.nextLine();
+            return read;
         } catch (NoSuchElementException | IllegalStateException e) {
             return null;
         }
@@ -315,15 +323,14 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static void disconnect() {
         System.out.println(LINE_BREAK);
-        scanner.close();
         System.out.println("Client disconnected successfully.");
         System.exit(0);
     }
 
     @Override
-    public void updateStatistics(SystemStatistics stats) throws RemoteException {
+    public synchronized void updateStatistics(SystemStatistics stats) throws RemoteException {
         latestStats = stats;
-        
+
         if (menuOption == 4) { 
             System.out.println("\n--- Statistics Updated ---");
             openAdministrativePage(); 
@@ -332,10 +339,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static String normalizeWords(String text) {
         text = Normalizer.normalize(text, Normalizer.Form.NFD);
-        text = text.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
-        text = text.replaceAll("[\\p{Punct}]", "").toLowerCase();
-
+        text = text.replaceAll("[^\\p{ASCII}]", "");
         return text;
     }
-
 }

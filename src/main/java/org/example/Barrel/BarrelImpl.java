@@ -142,15 +142,18 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     .append("FROM word_url w ")
                     .append("JOIN urls u ON w.url = u.url ")
                     .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
-                    .append("WHERE w.word IN (?) ")  // Ensure the URL contains any of the search terms
+                    .append("WHERE w.word = ANY(?) ")  // Corrected for array usage
                     .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
-                    .append("HAVING COUNT(DISTINCT w.word) = ? ")  // Ensure all terms are present
+                    .append("HAVING COUNT(DISTINCT w.word) = ? ")  // Second parameter
                     .append("ORDER BY u.ranking DESC, COUNT(w.word) DESC;");
-
     
         try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
+            // Create PostgreSQL array
             Array array = this.conn.createArrayOf("text", words);
             stmt.setArray(1, array);
+    
+            // Second parameter: number of words
+            stmt.setInt(2, words.length);
     
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -167,17 +170,17 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                         }
                     }
     
-                    // Construct the SearchResult using title, url, and snippet
                     results.add(new SearchResult(title, url, snippet));
                 }
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw new RemoteException("Database query failed", e);
         }
     
         return results;
-    }   
+    }
+       
     
 
     // Método para fechar a conexão (se necessário)
@@ -194,25 +197,24 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
-        String query = "SELECT from_url FROM url_links WHERE to_url = ?;";
+        String query = "SELECT from_url FROM url_links WHERE to_url = ?;"; // Only 1 parameter
     
         try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
-    
-            stmt.setString(1, url);
-            stmt.setString(2, url);
+            stmt.setString(1, url);  // Only set once
     
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     connectedUrls.add(rs.getString(1));
                 }
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw new RemoteException("Database query failed", e);
         }
     
         return new SearchResult(url, connectedUrls);
     }
+    
 
 
     @Override
@@ -226,7 +228,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     resposta = rs.getInt(1) > 0;
                 }
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -248,7 +250,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     topSearches.add(resultSet.getString("word"));
                 }
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw new RemoteException("Error retrieving top searches from the database.", e);
         }
@@ -270,7 +272,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             } else {
                 return 0;  // Return 0 if no rows are found
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             // Handle exceptions, such as connection errors or SQL issues
             e.printStackTrace();
             throw new RemoteException("Error querying the database", e);
@@ -300,7 +302,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     frequentWords.put(rs.getString("word"), rs.getInt("frequency"));
                 }
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw new RemoteException("Database error while fetching frequent words", e);
         }
