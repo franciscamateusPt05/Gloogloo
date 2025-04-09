@@ -29,7 +29,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private static final String BARREL_CONFIG_FILE = "src/main/java/org/example/Properties/barrel.properties";
     private static final long serialVersionUID = 1L;
 
-    private final List<IStatistics> listeners = new ArrayList<>();
+    private List<IStatistics> listeners = new ArrayList<>();
     private SystemStatistics currentStats;
 
     private Map<String, IBarrel> activeBarrels = new HashMap<>();
@@ -103,10 +103,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         String host = prop.getProperty(prefix + ".rmi.host", "localhost");
         String port = prop.getProperty(prefix + ".rmi.port", "1112");
         String service = prop.getProperty(prefix + ".rmi.service_name", "QueueService");
-    
-        System.out.println("Host: " + host);
-        System.out.println("Port: " + port);
-        System.out.println("Service: " + service); 
     
         if (host == null || port == null || service == null) {
             throw new IllegalArgumentException("Missing RMI configuration for " + prefix);
@@ -185,6 +181,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                 results = barrel.search(search); 
                 long endTime = System.nanoTime();
                 double responseTime = (endTime - startTime) / 1_000_000.0;
+                responseTime = (double) Math.round(responseTime * 100) / 100;
 
                 // Update BarrelStats for the current barrel
                 BarrelStats stats = responseTimes.get(barrelId);
@@ -225,10 +222,39 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    private List<String> getTopSearches() {
+        if (selectedBarrel == null || selectedBarrelId == null) {
+            System.out.println("[Gateway] No selected barrel available.");
+            return new ArrayList<>();
+        }
+    
+        try {
+            long startTime = System.nanoTime();
+            List<String> topSearches = selectedBarrel.getTopSearches();
+            long endTime = System.nanoTime();
+            double responseTime = (endTime - startTime) / 1_000_000.0;
+            responseTime = (double) Math.round(responseTime * 100) / 100;
+    
+            BarrelStats stats = responseTimes.get(selectedBarrelId);
+            if (stats != null) {
+                stats.addResponseTime(responseTime);
+            }
+    
+            return topSearches != null ? topSearches : new ArrayList<>();
+    
+        } catch (IOException e) {
+            System.err.println("[Gateway] Error during getTopSearches on selected barrel " + selectedBarrelId + ": " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+
     private void updateStatistics(String[] search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
         HashMap<String, Double> response = new HashMap<>();
         response.put(selectedBarrelId, responseTime);
+
+        topSearches = getTopSearches();
     
         // Add barrel sizes to the statistics
         HashMap<String, Integer> barrelSizes = new HashMap<>();
@@ -236,9 +262,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             String barrelId = barrelEntry.getKey();
             BarrelStats stats = responseTimes.get(barrelId);
             
-            // Let's assume each barrel's size is stored in the stats or fetched from somewhere
-            int barrelSize = (int) (stats != null ? stats.getBarrelSize() : 0);  // Example method to fetch barrel size
-            barrelSizes.put(barrelId, barrelSize);  // Put size info in the map
+            int barrelSize = (int) (stats != null ? stats.getBarrelSize() : 0);
+            barrelSizes.put(barrelId, barrelSize);
         }
     
         // Add average response times to the statistics
@@ -281,6 +306,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             SearchResult result = selectedBarrel.getConnections(url);
             long endTime = System.nanoTime();
             double responseTime = (endTime - startTime) / 1_000_000.0;
+            responseTime = (double) Math.round(responseTime * 100) / 100;
 
             BarrelStats stats = responseTimes.get(selectedBarrelId);
             stats.addResponseTime(responseTime);

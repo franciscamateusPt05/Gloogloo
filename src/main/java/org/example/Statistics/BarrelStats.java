@@ -29,6 +29,8 @@ public class BarrelStats {
 
     // Get average response time
     public double getAverageResponseTime() {
-        return responseTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        double avgResponseTime = responseTimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        avgResponseTime = (double) Math.round(avgResponseTime * 100)/ 100;
+        return avgResponseTime;
     }
 }
