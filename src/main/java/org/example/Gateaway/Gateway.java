@@ -1,8 +1,11 @@
 package org.example.Gateaway;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -373,11 +376,31 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     public void registarBarrel(String rmi) throws RemoteException {
         try {
+            try{
+            unregisterBarrel(rmi);
+            } catch (RemoteException e) {
+                System.err.println("Failed to unregister barrel: " + e.getMessage());
+            }
+
             IBarrel barrel = (IBarrel) Naming.lookup(rmi);
+            IBarrel sinc = null;
+
+            System.out.println(activeBarrels.size());
+
+            if (!activeBarrels.isEmpty()) {
+
+                for (String chave : activeBarrels.keySet()) {
+                    IBarrel sincc = activeBarrels.get(chave);
+                    sinc = sincc;
+                    break; // Remove este break se quiser processar todos os barrels
+                }
+
+                //Sincronização
+                sincronizar(sinc.getFicheiro(), barrel.getFicheiro());
+            }
             this.activeBarrels.put(rmi, barrel);
             System.out.println("Barrel registado com sucesso: " + rmi);
 
-            //Sincronização
         } catch (NotBoundException | MalformedURLException e) {
             System.err.println("Erro ao registar o Barrel: " + e.getMessage());
             throw new RuntimeException(e);
@@ -392,8 +415,26 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-    public void sincronizar(String rmi) throws RemoteException {
+    public static void sincronizar(String caminhoOrigem, String caminhoDestino) {
+        File bancoOrigem = new File(caminhoOrigem);
+        File bancoDestino = new File(caminhoDestino);
 
+        try {
+            // Verifica se o banco de dados de destino existe e tenta removê-lo
+            if (bancoDestino.exists()) {
+                if (!bancoDestino.delete()) {
+                    System.err.println("Não foi possível remover o banco de dados de destino existente.");
+                    return;
+                }
+            }
+
+            // Copia o banco de dados de origem para o destino, substituindo-o se necessário
+            Files.copy(bancoOrigem.toPath(), bancoDestino.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("Banco de dados copiado com sucesso!");
+        } catch (IOException e) {
+            System.err.println("Erro ao copiar o banco de dados: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public Map<String, IBarrel> getBarrels() throws RemoteException{
