@@ -14,7 +14,7 @@ public class SystemStatistics implements Serializable {
 
     private static final long serialVersionUID = 1L;
     private List<String> topSearches;
-    private HashMap<String, Integer> barrelIndexSizes;  // Barrel size tracking
+    private HashMap<String, Integer> barrelIndexSizes;
     private HashMap<String, Double> averageResponseTimes;
 
     public SystemStatistics(List<String> topSearches, HashMap<String, Integer> barrelIndexSizes, HashMap<String, Double> averageResponseTimes) {

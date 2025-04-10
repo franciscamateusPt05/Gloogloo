@@ -6,7 +6,7 @@ import java.util.List;
 
 public class BarrelStats {
     private List<Double> responseTimes;
-    private long barrelSize;  // Size of the barrel, in whatever metric you need (e.g., number of items)
+    private long barrelSize;
 
     public BarrelStats() {
         this.responseTimes = new ArrayList<>();

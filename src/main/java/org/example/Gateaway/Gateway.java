@@ -110,36 +110,49 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
         return "rmi://" + host + ":" + port + "/" + service;
     }
-    
+
 
     private void checkActiveBarrels(Properties prop) throws IOException {
-        // Do NOT clear responseTimes to persist old stats
-        activeBarrels.clear(); // Reset only active barrels, not response times
-        
-        for (int i = 1; i <= 2; i++) { // Assuming 2 barrels for this example
+        activeBarrels.clear();
+
+        int i = 1;
+        boolean moreBarrelsExist = true;
+
+        while (moreBarrelsExist) {
+            // Dynamically generate barrelPrefix based on iteration index
             String barrelPrefix = "barrel" + i;
-            String barrelUrl = getRmiUrl(prop, barrelPrefix);
-    
+            String barrelUrl = getRmiUrl(prop, barrelPrefix);  // Construct RMI URL based on barrelPrefix
+
             try {
                 IBarrel barrel = (IBarrel) Naming.lookup(barrelUrl);
                 activeBarrels.put(barrelPrefix, barrel);
-    
+
                 // Initialize stats ONLY if it doesn't exist
-                responseTimes.putIfAbsent(barrelPrefix, new BarrelStats());  
-    
+                responseTimes.putIfAbsent(barrelPrefix, new BarrelStats());
+
                 System.out.println("Connected to active barrel: " + barrelUrl);
+
+                i++;  // Move to the next barrel index
             } catch (Exception e) {
-                System.err.println("Barrel not available: " + barrelUrl);
+                // If barrel is not found, just stop trying more barrels
+                if (e instanceof NotBoundException || e instanceof MalformedURLException) {
+                    // We're trying to access a barrel that doesn't exist
+                    System.out.println("No more barrels to try. Stopping further attempts.");
+                    moreBarrelsExist = false;
+                } else {
+                    System.err.println("Unexpected error while connecting to barrel: " + barrelUrl);
+                    e.printStackTrace(); // Log the actual exception for troubleshooting
+                }
             }
         }
-    
+
         if (activeBarrels.isEmpty()) {
             System.err.println("No active barrels available!");
         } else {
             selectRandomBarrel(); // Ensure a barrel is selected
         }
     }
-    
+
 
     private void selectRandomBarrel() {
         List<String> barrelIds = new ArrayList<>(activeBarrels.keySet());
