@@ -21,12 +21,11 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     String rmiUrl;
     String dbUrl;
-    String dbUser;
-    String dbPassword;
+    String ficheiro;
 
 
 
-    public BarrelImpl(String barrelName) throws RemoteException {
+    public BarrelImpl(String barrelName,String ficheiro) throws RemoteException {
         super();
 
         Properties properties = new Properties();
@@ -42,8 +41,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         // Escolher a configuração do Barrel com base no nome (barrel1 ou barrel2)
         rmiUrl = properties.getProperty(barrelName + ".rmi.url");
         dbUrl = properties.getProperty(barrelName + ".db.url");
-//        dbUser = properties.getProperty(barrelName + ".db.user");
-//        dbPassword = properties.getProperty(barrelName + ".db.password");
+        this.ficheiro = ficheiro;
 
         // Log de depuração
         logger.info("Conectando ao Barrel: " + barrelName);
@@ -181,19 +179,8 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return results;
     }
        
-    
 
-    // Método para fechar a conexão (se necessário)
-    public void closeConnection(Connection conn) throws RemoteException {
-        try {
-            if (conn != null && !conn.isClosed()) {
-                conn.close();
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Erro ao fechar a conexão: " + e.getMessage());
-            throw new RemoteException("Erro ao fechar a conexão", e);
-        }
-    }
+
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
@@ -241,7 +228,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         List<String> topSearches = new ArrayList<>();
 
         // Try-with-resources to automatically close resources
-        try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
+        try (Connection connection = DriverManager.getConnection(dbUrl)) {
             String query = "SELECT word FROM word ORDER BY top DESC LIMIT 10";  // Query to get top 10 searches
             try (Statement stmt = connection.createStatement()) {
                 ResultSet resultSet = stmt.executeQuery(query);
@@ -262,7 +249,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     String query = "SELECT COUNT(*) FROM word_url";  // Query to count rows in word_url table
 
-        try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
+        try (Connection connection = DriverManager.getConnection(dbUrl);
              Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
 
@@ -281,7 +268,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
      public Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException {
         Map<String, Integer> frequentWords = new HashMap<>();
-        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
+        try (Connection conn = DriverManager.getConnection(dbUrl)) {
             String query = new StringBuilder()
                     .append("WITH word_frequencies AS (")
                     .append("    SELECT w.word, SUM(wu.frequency) AS total_frequency ")
@@ -307,5 +294,9 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             throw new RemoteException("Database error while fetching frequent words", e);
         }
         return frequentWords;
+    }
+
+    public String getFicheiro() throws RemoteException {
+        return ficheiro;
     }
 }

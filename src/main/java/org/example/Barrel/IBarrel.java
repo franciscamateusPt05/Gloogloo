@@ -43,5 +43,7 @@ public interface IBarrel extends Remote {
     int getSize() throws RemoteException;
 
     Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException;
+
+    String getFicheiro() throws RemoteException;
 }
 
