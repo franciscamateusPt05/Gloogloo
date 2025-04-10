@@ -42,8 +42,8 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         // Escolher a configuração do Barrel com base no nome (barrel1 ou barrel2)
         rmiUrl = properties.getProperty(barrelName + ".rmi.url");
         dbUrl = properties.getProperty(barrelName + ".db.url");
-        dbUser = properties.getProperty(barrelName + ".db.user");
-        dbPassword = properties.getProperty(barrelName + ".db.password");
+//        dbUser = properties.getProperty(barrelName + ".db.user");
+//        dbPassword = properties.getProperty(barrelName + ".db.password");
 
         // Log de depuração
         logger.info("Conectando ao Barrel: " + barrelName);
@@ -52,7 +52,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
         // Conectar ao banco de dados do Barrel
         try {
-            this.conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
+            this.conn = DriverManager.getConnection(dbUrl);
             conn.setAutoCommit(false);
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Erro ao conectar ao banco de dados: " + e.getMessage());

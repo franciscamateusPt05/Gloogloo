@@ -73,6 +73,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             // Connect to Queue
             String queueUrl = getRmiUrl(queueProp, "queue");
+            System.out.println("Queue URL: " + queueUrl);
             queue = (IQueue) Naming.lookup(queueUrl);
             System.out.println("Connected to Queue: " + queueUrl);
 
