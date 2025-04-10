@@ -135,7 +135,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
                 System.out.println("Connected to active barrel: " + barrelUrl);
 
-                i++;  // Move to the next barrel index
             } catch (Exception e) {
                 // If barrel is not found, just stop trying more barrels
                 if (e instanceof NotBoundException || e instanceof MalformedURLException) {
@@ -147,6 +146,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                     e.printStackTrace(); // Log the actual exception for troubleshooting
                 }
             }
+            i++;  // Move to the next barrel index
         }
 
         if (activeBarrels.isEmpty()) {
