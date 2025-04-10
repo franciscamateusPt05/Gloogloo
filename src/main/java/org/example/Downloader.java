@@ -50,9 +50,9 @@ public class Downloader {
                 queueProps.load(input);
             }
             // Obter as URLs dos serviços RMI da Queue
-            String host = queueProps.getProperty("rmi.host");
-            String port = queueProps.getProperty("rmi.port");
-            String serviceName = queueProps.getProperty("rmi.service_name");
+            String host = queueProps.getProperty("queue.rmi.host");
+            String port = queueProps.getProperty("queue.rmi.port");
+            String serviceName = queueProps.getProperty("queue.rmi.service_name");
             this.queueURL = "rmi://" + host + ":" + port + "/" + serviceName;
 
             // Carregar as propriedades de gateway-config.properties
