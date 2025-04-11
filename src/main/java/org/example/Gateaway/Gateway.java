@@ -277,18 +277,23 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private void updateStatistics(String[] search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
         HashMap<String, Double> response = new HashMap<>();
+        HashMap<String, Integer> barrelSizes = new HashMap<>();
+        
         response.put(selectedBarrelId, responseTime);
-
         topSearches = getTopSearches();
     
-        // Add barrel sizes to the statistics
-        HashMap<String, Integer> barrelSizes = new HashMap<>();
         for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
             String barrelId = barrelEntry.getKey();
-            BarrelStats stats = responseTimes.get(barrelId);
-            
-            int barrelSize = (int) (stats != null ? stats.getBarrelSize() : 0);
-            barrelSizes.put(barrelId, barrelSize);
+            IBarrel barrel = barrelEntry.getValue();
+    
+            try {
+                // Query the real barrel size dynamically from the barrel itself
+                int barrelSize = barrel.getSize(); // Assuming IBarrel has a method getBarrelSize
+                barrelSizes.put(barrelId, barrelSize);
+            } catch (RemoteException e) {
+                System.err.println("[Gateway] Failed to get size for barrel: " + barrelId);
+                barrelSizes.put(barrelId, 0);  // Default to 0 if error occurs
+            }
         }
     
         // Add average response times to the statistics
