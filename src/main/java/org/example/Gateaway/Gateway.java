@@ -174,6 +174,14 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         System.out.println("URL inserted successfully into Queue");
     }
 
+    public void addFirst(String url) throws RemoteException{
+        if (queue == null) {
+            throw new RemoteException("Queue service is not initialized.");
+        }
+        queue.addFirst(url);
+        System.out.println("URL inserted successfully into Queue");
+    }
+
     public List<SearchResult> search(String[] search) throws RemoteException {
         // Refresh barrels and select a random barrel every time a search is performed
         refreshAndSelectBarrel();

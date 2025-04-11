@@ -48,15 +48,32 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         return url;
     }
 
-    @Override
     public synchronized void addURL(String url) throws RemoteException {
         loadQueueFromFile();
-        if (this.queue.size() < MAX_SIZE && !queue.contains(url)) {
-            queue.add(url);
+        if (!queue.contains(url)) {
+            LinkedList<String> list = (LinkedList<String>) this.queue;
+            if (list.size() >= MAX_SIZE) {
+                list.removeLast();
+            }
+            list.addLast(url);
             saveQueueToFile();
             notifyAll(); // Notifica as threads que estão à espera de uma URL
         }
     }
+
+    public synchronized void addFirst(String url) throws RemoteException {
+        loadQueueFromFile();
+        if (!queue.contains(url)) {
+            LinkedList<String> list = (LinkedList<String>) this.queue;
+            if (list.size() >= MAX_SIZE) {
+                list.removeLast(); 
+            }
+            list.addFirst(url);
+            saveQueueToFile();
+            notifyAll(); // Notifica as threads que estão à espera de uma URL
+        }
+    }
+
 
     private void loadQueueFromFile() {
         queue.clear(); // Limpa a queue antes de carregar do ficheiro

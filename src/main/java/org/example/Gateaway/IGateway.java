@@ -25,6 +25,8 @@ public interface IGateway extends Remote {
      */
     public void insertURL(String url) throws RemoteException;
 
+    public void addFirst(String url) throws RemoteException;
+
     /**
      * Searches for a specified terms and returns the searched results.
      *

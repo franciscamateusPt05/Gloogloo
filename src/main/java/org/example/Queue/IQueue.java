@@ -11,6 +11,8 @@ public interface IQueue extends Remote {
     // Método para adicionar uma URL à fila
     void addURL(String url) throws RemoteException;
 
+    void addFirst(String url) throws RemoteException;
+
     Set<String> getStopwords() throws RemoteException;
 
 }

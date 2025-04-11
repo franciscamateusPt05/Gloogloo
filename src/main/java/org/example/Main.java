@@ -181,13 +181,29 @@ public class Main extends UnicastRemoteObject implements IStatistics {
     private void insertURL() {
         try {
             String url = readURL();
+    
             if (url != null) {
-                gateway.insertURL(url);
+                while (true) {
+                    System.out.println("The URL should be processed right now? [y/n]");
+    
+                    String input = scanner.nextLine().trim().toUpperCase();
+    
+                    if (input.equals("Y")) {
+                        gateway.addFirst(url);
+                        break;
+                    } else if (input.equals("N")) {
+                        gateway.insertURL(url);
+                        break;
+                    } else {
+                        System.out.println("Invalid input. Please try again.");
+                    }
+                }
             }
         } catch (RemoteException e) {
             System.err.println("Failed to insert URL: " + e.getMessage());
         }
     }
+    
 
     private void performSearch() {
         try {
