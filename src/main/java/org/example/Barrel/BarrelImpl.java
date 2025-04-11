@@ -7,6 +7,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.sql.*;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -132,53 +133,65 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     }
 
     public List<SearchResult> search(String[] words) throws RemoteException {
-        List<SearchResult> results = new ArrayList<>();
-        StringBuilder queryBuilder = new StringBuilder();
-    
-        queryBuilder.append("SELECT u.url, u.titulo, u.citacao, u.ranking, ")
-                    .append("ARRAY_AGG(ul.from_url) AS incoming_links ")
-                    .append("FROM word_url w ")
-                    .append("JOIN urls u ON w.url = u.url ")
-                    .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
-                    .append("WHERE w.word = ANY(?) ")  // Corrected for array usage
-                    .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
-                    .append("HAVING COUNT(DISTINCT w.word) = ? ")  // Second parameter
-                    .append("ORDER BY u.ranking DESC, COUNT(w.word) DESC;");
-    
-        try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
-            // Create PostgreSQL array
-            Array array = this.conn.createArrayOf("text", words);
-            stmt.setArray(1, array);
-    
-            // Second parameter: number of words
-            stmt.setInt(2, words.length);
-    
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    String url = rs.getString("url");
-                    String title = rs.getString("titulo");
-                    String snippet = rs.getString("citacao");
-                    Array incomingLinksArray = rs.getArray("incoming_links");
-                    List<String> incomingLinks = new ArrayList<>();
-    
-                    if (incomingLinksArray != null) {
-                        String[] links = (String[]) incomingLinksArray.getArray();
-                        for (String link : links) {
-                            incomingLinks.add(link);
-                        }
-                    }
-    
-                    results.add(new SearchResult(title, url, snippet));
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RemoteException("Database query failed", e);
-        }
-    
+    List<SearchResult> results = new ArrayList<>();
+
+    if (words == null || words.length == 0) {
         return results;
     }
-       
+
+    StringBuilder queryBuilder = new StringBuilder();
+    queryBuilder.append("SELECT u.url, u.titulo, u.citacao, u.ranking, ")
+                .append("GROUP_CONCAT(DISTINCT ul.from_url) AS incoming_links, ")
+                .append("COUNT(DISTINCT w.word) AS matched_words ")
+                .append("FROM word_url w ")
+                .append("JOIN urls u ON w.url = u.url ")
+                .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
+                .append("WHERE w.word IN (");
+
+    // Dynamically add placeholders
+    for (int i = 0; i < words.length; i++) {
+        queryBuilder.append("?");
+        if (i < words.length - 1) {
+            queryBuilder.append(", ");
+        }
+    }
+    queryBuilder.append(") ")
+                .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
+                .append("HAVING matched_words = ? ")
+                .append("ORDER BY u.ranking DESC, matched_words DESC;");
+
+    try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
+        int index = 1;
+        for (String word : words) {
+            stmt.setString(index++, word);
+        }
+
+        // Set the count of words for HAVING clause
+        stmt.setInt(index, words.length);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                String url = rs.getString("url");
+                String title = rs.getString("titulo");
+                String snippet = rs.getString("citacao");
+                String incomingLinksStr = rs.getString("incoming_links");
+
+                List<String> incomingLinks = new ArrayList<>();
+                if (incomingLinksStr != null) {
+                    String[] links = incomingLinksStr.split(",");
+                    Collections.addAll(incomingLinks, links);
+                }
+
+                results.add(new SearchResult(title, url, snippet));
+            }
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        throw new RemoteException("Database query failed", e);
+    }
+
+    return results;
+}
 
 
 
