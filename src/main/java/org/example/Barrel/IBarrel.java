@@ -45,5 +45,7 @@ public interface IBarrel extends Remote {
     Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException;
 
     String getFicheiro() throws RemoteException;
+
+    void uptadeTopWords(String[] words) throws RemoteException;
 }
 

@@ -133,74 +133,115 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     }
 
     public List<SearchResult> search(String[] words) throws RemoteException {
-    List<SearchResult> results = new ArrayList<>();
+        List<SearchResult> results = new ArrayList<>();
 
-    if (words == null || words.length == 0) {
+        if (words == null || words.length == 0) {
+            return results;
+        }
+
+        StringBuilder queryBuilder = new StringBuilder();
+        queryBuilder.append("SELECT u.url, u.titulo, u.citacao, u.ranking, ")
+                    .append("GROUP_CONCAT(DISTINCT ul.from_url) AS incoming_links, ")
+                    .append("COUNT(DISTINCT w.word) AS matched_words ")
+                    .append("FROM word_url w ")
+                    .append("JOIN urls u ON w.url = u.url ")
+                    .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
+                    .append("WHERE w.word IN (");
+
+        // Dynamically add placeholders
+        for (int i = 0; i < words.length; i++) {
+            queryBuilder.append("?");
+            if (i < words.length - 1) {
+                queryBuilder.append(", ");
+            }
+        }
+        queryBuilder.append(") ")
+                    .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
+                    .append("HAVING matched_words = ? ")
+                    .append("ORDER BY u.ranking DESC, matched_words DESC;");
+
+        try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
+            int index = 1;
+            for (String word : words) {
+                stmt.setString(index++, word);
+            }
+
+            // Set the count of words for HAVING clause
+            stmt.setInt(index, words.length);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String url = rs.getString("url");
+                    String title = rs.getString("titulo");
+                    String snippet = rs.getString("citacao");
+                    String incomingLinksStr = rs.getString("incoming_links");
+
+                    List<String> incomingLinks = new ArrayList<>();
+                    if (incomingLinksStr != null) {
+                        String[] links = incomingLinksStr.split(",");
+                        Collections.addAll(incomingLinks, links);
+                    }
+
+                    results.add(new SearchResult(title, url, snippet));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RemoteException("Database query failed", e);
+        }
+
         return results;
     }
 
-    StringBuilder queryBuilder = new StringBuilder();
-    queryBuilder.append("SELECT u.url, u.titulo, u.citacao, u.ranking, ")
-                .append("GROUP_CONCAT(DISTINCT ul.from_url) AS incoming_links, ")
-                .append("COUNT(DISTINCT w.word) AS matched_words ")
-                .append("FROM word_url w ")
-                .append("JOIN urls u ON w.url = u.url ")
-                .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
-                .append("WHERE w.word IN (");
+    public void uptadeTopWords(String[] words) throws RemoteException{
+        // Start a transaction
+        try {
+            this.conn.setAutoCommit(false); // Disable auto-commit for batch update
 
-    // Dynamically add placeholders
-    for (int i = 0; i < words.length; i++) {
-        queryBuilder.append("?");
-        if (i < words.length - 1) {
-            queryBuilder.append(", ");
-        }
-    }
-    queryBuilder.append(") ")
-                .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
-                .append("HAVING matched_words = ? ")
-                .append("ORDER BY u.ranking DESC, matched_words DESC;");
-
-    try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
-        int index = 1;
-        for (String word : words) {
-            stmt.setString(index++, word);
-        }
-
-        // Set the count of words for HAVING clause
-        stmt.setInt(index, words.length);
-
-        try (ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                String url = rs.getString("url");
-                String title = rs.getString("titulo");
-                String snippet = rs.getString("citacao");
-                String incomingLinksStr = rs.getString("incoming_links");
-
-                List<String> incomingLinks = new ArrayList<>();
-                if (incomingLinksStr != null) {
-                    String[] links = incomingLinksStr.split(",");
-                    Collections.addAll(incomingLinks, links);
+            // Update the 'top' value for each word in the search array
+            try (PreparedStatement updateStmt = this.conn.prepareStatement(
+                    "UPDATE word SET top = top + 1 WHERE word = ?")) {
+                
+                for (String word : words) {
+                    System.out.println("Updating top for word: " + word); // Debugging line
+                    updateStmt.setString(1, word);
+                    int rowsAffected = updateStmt.executeUpdate();
+                    System.out.println("Rows affected: " + rowsAffected); // Debugging line
+                    
+                    // If no rows were affected, maybe the word doesn't exist
+                    if (rowsAffected == 0) {
+                        System.out.println("No rows updated for word: " + word); // Debugging line
+                    }
                 }
+            }
 
-                results.add(new SearchResult(title, url, snippet));
+            // Commit the transaction
+            this.conn.commit();
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try {
+                this.conn.rollback(); // Rollback in case of an error
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            throw new RemoteException("Failed to update word table", e);
+        } finally {
+            try {
+                this.conn.setAutoCommit(true); // Re-enable auto-commit after transaction
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
-    } catch (Exception e) {
-        e.printStackTrace();
-        throw new RemoteException("Database query failed", e);
+
     }
-
-    return results;
-}
-
-
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
-        String query = "SELECT from_url FROM url_links WHERE to_url = ?;"; // Only 1 parameter
+        String query = "SELECT from_url FROM url_links WHERE to_url = ?;"; 
     
         try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
-            stmt.setString(1, url);  // Only set once
+            stmt.setString(1, url);
     
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -242,7 +283,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
         // Try-with-resources to automatically close resources
         try (Connection connection = DriverManager.getConnection(dbUrl)) {
-            String query = "SELECT word FROM word ORDER BY top DESC LIMIT 10";  // Query to get top 10 searches
+            String query = "SELECT word FROM word WHERE top IS NOT NULL AND top <> 0 ORDER BY top DESC LIMIT 10;";  // Query to get top 10 searches
             try (Statement stmt = connection.createStatement()) {
                 ResultSet resultSet = stmt.executeQuery(query);
 

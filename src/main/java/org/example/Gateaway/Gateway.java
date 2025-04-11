@@ -225,6 +225,13 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             }
         }
 
+        // update top words in database
+        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+            IBarrel barrel = barrelEntry.getValue();
+
+            barrel.uptadeTopWords(search);
+        }        
+
         if (!searchSucceeded) {
             System.err.println("[Gateway] All barrels failed for search: " + search);
         }
