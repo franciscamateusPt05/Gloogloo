@@ -8,7 +8,6 @@ import java.sql.*;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -57,6 +56,12 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     public void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
 
         try {
+            if (this.conn == null || this.conn.isClosed()) {
+                logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
+                connect();
+            }
+
+            this.conn.setAutoCommit(false);
 
             // Inserir ou atualizar as palavras no banco de dados
             for (Map.Entry<String, Integer> entry : words.entrySet()) {
@@ -108,21 +113,17 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             }
 
             conn.commit();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            try {
-                if (this.conn != null) {
-                    this.conn.rollback();
-                    this.conn.close();
-
-                }
-            } catch (SQLException ex) {
-                ex.printStackTrace();
+    } catch (SQLException e) {
+        e.printStackTrace();
+        try {
+            if (this.conn != null && !this.conn.getAutoCommit()) {
                 this.conn.rollback();
-                this.conn.close();
             }
-            throw new RemoteException("Erro ao adicionar informações ao índice", e);
+        } catch (SQLException rollbackEx) {
+            rollbackEx.printStackTrace();
         }
+        throw new RemoteException("Erro ao adicionar informações ao índice", e);
+    }
 
     }
 
@@ -153,14 +154,24 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
                 .append("HAVING matched_words = ? ")
                 .append("ORDER BY u.ranking DESC, matched_words DESC;");
+        
+        try {
+            if (this.conn == null || this.conn.isClosed()) {
+                logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
+                connect();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RemoteException("Erro ao verificar conexão com o banco", e);
+        }
 
         try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
+            
             int index = 1;
             for (String word : words) {
                 stmt.setString(index++, word);
             }
 
-            // Set the count of words for HAVING clause
             stmt.setInt(index, words.length);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -187,52 +198,59 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return results;
     }
 
-    public void uptadeTopWords(String[] words) throws RemoteException{
-        // Start a transaction
+    public void updateTopWords(String[] words) throws RemoteException {
         try {
-            this.conn.setAutoCommit(false); // Disable auto-commit for batch update
-
-            // Update the 'top' value for each word in the search array
+            if (this.conn == null || this.conn.isClosed()) {
+                logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
+                connect();
+            }
+    
+            this.conn.setAutoCommit(false);
+    
             try (PreparedStatement updateStmt = this.conn.prepareStatement(
                     "UPDATE word SET top = top + 1 WHERE word = ?")) {
-
+    
                 for (String word : words) {
-                    System.out.println("Updating top for word: " + word); // Debugging line
+                    System.out.println("Updating top for word: " + word);
                     updateStmt.setString(1, word);
                     int rowsAffected = updateStmt.executeUpdate();
-                    System.out.println("Rows affected: " + rowsAffected); // Debugging line
-
-                    // If no rows were affected, maybe the word doesn't exist
+                    System.out.println("Rows affected: " + rowsAffected);
+    
                     if (rowsAffected == 0) {
-                        System.out.println("No rows updated for word: " + word); // Debugging line
+                        System.out.println("No rows updated for word: " + word);
                     }
                 }
             }
-
-            // Commit the transaction
+    
             this.conn.commit();
-
+    
         } catch (SQLException e) {
             e.printStackTrace();
             try {
-                this.conn.rollback(); // Rollback in case of an error
+                if (this.conn != null) {
+                    this.conn.rollback();
+                }
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
             throw new RemoteException("Failed to update word table", e);
-        } finally {
-            try {
-                this.conn.setAutoCommit(true); // Re-enable auto-commit after transaction
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
-
     }
+    
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
         String query = "SELECT from_url FROM url_links WHERE to_url = ?;";
+
+        try {
+            if (this.conn == null || this.conn.isClosed()) {
+                logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
+                connect();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RemoteException("Erro ao verificar conexão com o banco", e);
+        }
 
         try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
             stmt.setString(1, url);
@@ -250,12 +268,20 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return new SearchResult(url, connectedUrls);
     }
 
-
-
-    @Override
     public boolean containsUrl(String url) throws RemoteException {
         String query = "SELECT COUNT(*) FROM urls WHERE url = ?";
         boolean resposta = true;
+
+        try {
+            if (this.conn == null || this.conn.isClosed()) {
+                logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
+                connect();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RemoteException("Erro ao verificar conexão com o banco", e);
+        }
+
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, url);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -270,14 +296,12 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return resposta;
     }
 
-
-    @Override
     public List<String> getTopSearches() throws RemoteException {
         List<String> topSearches = new ArrayList<>();
 
-        // Try-with-resources to automatically close resources
         try (Connection connection = DriverManager.getConnection(dbUrl)) {
-            String query = "SELECT word FROM word WHERE top IS NOT NULL AND top <> 0 ORDER BY top DESC LIMIT 10;";  // Query to get top 10 searches
+
+            String query = "SELECT word FROM word WHERE top IS NOT NULL AND top <> 0 ORDER BY top DESC LIMIT 10;";
             try (Statement stmt = connection.createStatement()) {
                 ResultSet resultSet = stmt.executeQuery(query);
 
@@ -314,35 +338,48 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
-    public Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException {
-        Map<String, Integer> frequentWords = new HashMap<>();
+    public List<String> getFrequentWords() throws RemoteException {
+        List<String> frequentWords = new ArrayList<>();
+    
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
-            String query = new StringBuilder()
-                    .append("WITH word_frequencies AS (")
-                    .append("    SELECT w.word, SUM(wu.frequency) AS total_frequency ")
-                    .append("    FROM word_url wu ")
-                    .append("    JOIN word w ON wu.word = w.word ")
-                    .append("    GROUP BY w.word ")
-                    .append(") ")
-                    .append("SELECT word, total_frequency ")
-                    .append("FROM word_frequencies ")
-                    .append("ORDER BY total_frequency DESC ")
-                    .append("LIMIT (SELECT CEIL(COUNT(*) * 0.07) FROM word);")
-                    .toString();
+    
+            // Get total word count
+            int wordCount = 0;
+            try (PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) FROM word")) {
+                ResultSet countRs = countStmt.executeQuery();
+                if (countRs.next()) {
+                    wordCount = countRs.getInt(1);
+                }
+            }
+            
+            // Set Limit
+            int limit = Math.max(1, (int) Math.ceil(wordCount * 0.07));
+    
+            // Get top frequent words up to that limit
+            String query = """
+                    SELECT wu.word
+                    FROM word_url wu
+                    GROUP BY wu.word
+                    ORDER BY SUM(wu.frequency) DESC
+                    LIMIT ?
+                    """;
+    
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
                 stmt.setInt(1, limit);
                 ResultSet rs = stmt.executeQuery();
-
                 while (rs.next()) {
-                    frequentWords.put(rs.getString("word"), rs.getInt("frequency"));
+                    frequentWords.add(rs.getString("word"));
                 }
             }
+    
         } catch (Exception e) {
             e.printStackTrace();
             throw new RemoteException("Database error while fetching frequent words", e);
         }
+    
         return frequentWords;
     }
+    
 
     public String getFicheiro() throws RemoteException {
         return ficheiro;

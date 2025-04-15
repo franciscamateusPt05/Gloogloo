@@ -37,8 +37,6 @@ public class Downloader {
     public Downloader() {
         this.stopWords = new HashSet<>();
         conectar();
-        startStopWordsUpdater();
-
     }
 
     // Método para carregar as propriedades a partir do arquivo config.properties
@@ -69,7 +67,7 @@ public class Downloader {
         }
     }
 
-    public void run() {
+    private void run() {
         try {
             String url = queue.getURL();
             if (url != null) {
@@ -126,9 +124,9 @@ public class Downloader {
                                 this.gateaway.unregisterBarrel(chave);
                                 System.out.println("Foi removido a URL: " + chave);
                             } catch (Exception ex) {
-//                                ex.printStackTrace();
+                                ex.printStackTrace();
                             }
-//                            e.printStackTrace();
+                            e.printStackTrace();
                         }
                     });
                     threads.add(thread);
@@ -171,21 +169,46 @@ public class Downloader {
     }
 
     // Start the periodic stop words updater
-    private void startStopWordsUpdater() {
+    private void stopWordsUpdater() {
+        // Setting the time for each stop word catch
+        int time = 1;
+
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                Set<String> newStopWords = queue.getStopwords();
-                if (newStopWords.isEmpty()) {
-                    System.out.println("stopwords.txt está vazio. Aguardando 5 minutos...");
-                } else {
-                    stopWords = newStopWords;
-                    System.out.println("Stop words atualizadas.");
+                // Get barrels from Gateway and pick one randomly
+                this.barrels = this.gateaway.getBarrels();
+                if (this.barrels.isEmpty()) {
+                    System.out.println("Nenhum barrel disponível. Aguardando próxima tentativa...");
+                    return;
                 }
-            } catch (IOException e) {
-                logger.log(Level.SEVERE, "Erro ao carregar stop words: " + e.getMessage());
+    
+                Random rand = new Random();
+                List<IBarrel> barrelList = new ArrayList<>(this.barrels.values());
+                IBarrel selectedBarrel = barrelList.get(rand.nextInt(barrelList.size()));
+    
+                // Get stopwords from selected barrel
+                List<String> barrelStopwords = selectedBarrel.getFrequentWords();
+    
+                if (barrelStopwords == null || barrelStopwords.isEmpty()) {
+                    System.out.println("Barrel não retornou stopwords. Aguardando próxima tentativa...");
+                    return;
+                }
+    
+                // Send stopwords to Queue to update file and in-memory list
+                queue.addStopWords(barrelStopwords);
+                System.out.println("Stopwords enviadas para a queue.");
+    
+                // Get updated stopwords from Queue and store locally
+                List<String> updatedStopwords = queue.getStopwords();
+                stopWords = new HashSet<>(updatedStopwords);
+                System.out.println("Stopwords sincronizadas. Total: " + stopWords.size());
+    
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Erro durante sincronização de stopwords: " + e.getMessage(), e);
             }
-        }, 0, 5, TimeUnit.MINUTES);
+        }, time, time, TimeUnit.MINUTES);
     }
+    
 
     public void conectar() {
         try {
@@ -197,11 +220,16 @@ public class Downloader {
         }
     }
 
+    public void shutdown() {
+        scheduler.shutdownNow();
+    }
 
     private static volatile boolean running = true;
-    // Main method remains unchanged
     public static void main(String[] args) throws InterruptedException {
-        int numDownloaders = 5;
+        int numDownloaders = 10;
+
+        Downloader stopwordManager = new Downloader();
+        stopwordManager.stopWordsUpdater(); 
 
         for (int i = 0; i < numDownloaders; i++) {
             Thread t = new Thread(() -> {
@@ -212,6 +240,13 @@ public class Downloader {
             });
             t.start();
         }
+
+        // Exiting cleanly and stop the scheduler
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutting down...");
+            running = false;
+            stopwordManager.shutdown(); 
+        }));
 
     }
 }

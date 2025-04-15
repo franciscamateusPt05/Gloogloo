@@ -11,7 +11,6 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
-import java.sql.SQLException;
 import java.util.*;
 
 import org.example.Barrel.*;
@@ -195,6 +194,13 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         List<SearchResult> results = new ArrayList<>();
         boolean searchSucceeded = false;
 
+        // update top words in database
+        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+            IBarrel barrel = barrelEntry.getValue();
+
+            barrel.updateTopWords(search);
+        }
+
         // Try searching with all active barrels
         for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
             String barrelId = barrelEntry.getKey();
@@ -224,13 +230,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             } catch (IOException e) {
                 System.err.println("[Gateway] Error during search on barrel " + barrelId + ": " + e.getMessage());
             }
-        }
-
-        // update top words in database
-        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
-            IBarrel barrel = barrelEntry.getValue();
-
-            barrel.uptadeTopWords(search);
         }
 
         if (!searchSucceeded) {
@@ -467,7 +466,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return new HashMap<>(this.activeBarrels);
     }
 
-    public Set<String> getStopwords() throws RemoteException {
+    public List<String> getStopwords() throws RemoteException {
         if (queue != null) {
             return queue.getStopwords();
         }

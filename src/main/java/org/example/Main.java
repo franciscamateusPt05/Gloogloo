@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Scanner;
-import java.util.Set;
 
 import org.example.Gateaway.*;
 import org.example.Statistics.IStatistics;
@@ -214,7 +213,7 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             }
             searchQuery = normalizeWords(searchQuery);
 
-            Set<String> stopwords = gateway.getStopwords();
+            List<String> stopwords = gateway.getStopwords();
             String[] search;
             search = searchQuery.split(" ");
 

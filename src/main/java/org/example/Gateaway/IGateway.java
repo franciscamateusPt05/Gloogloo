@@ -9,7 +9,6 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The IGateway interface defines the methods for a remote Gateway object
@@ -67,7 +66,6 @@ public interface IGateway extends Remote {
 
     public Map<String, IBarrel> getBarrels() throws RemoteException;
 
-    public Set<String> getStopwords() throws RemoteException;
-
+    public List<String> getStopwords() throws RemoteException;
 
 }

@@ -2,7 +2,6 @@ package org.example.Barrel;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -43,11 +42,11 @@ public interface IBarrel extends Remote {
 
     int getSize() throws RemoteException;
 
-    Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException;
+    List<String> getFrequentWords() throws RemoteException;
 
     String getFicheiro() throws RemoteException;
 
-    void uptadeTopWords(String[] words) throws RemoteException;
+    void updateTopWords(String[] words) throws RemoteException;
 
     void connect() throws RemoteException;
 }

@@ -2,7 +2,7 @@ package org.example.Queue;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.Set;
+import java.util.List;
 
 public interface IQueue extends Remote {
     // Método para obter uma URL da fila
@@ -13,6 +13,8 @@ public interface IQueue extends Remote {
 
     void addFirst(String url) throws RemoteException;
 
-    Set<String> getStopwords() throws RemoteException;
+    List<String> getStopwords() throws RemoteException;
+
+    public void addStopWords(List<String> words) throws RemoteException;
 
 }
