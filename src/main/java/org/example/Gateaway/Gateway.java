@@ -194,6 +194,13 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         List<SearchResult> results = new ArrayList<>();
         boolean searchSucceeded = false;
 
+        // update top words in database
+        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+            IBarrel barrel = barrelEntry.getValue();
+
+            barrel.uptadeTopWords(search);
+        } 
+
         // Try searching with all active barrels
         for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
             String barrelId = barrelEntry.getKey();
@@ -223,14 +230,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             } catch (IOException e) {
                 System.err.println("[Gateway] Error during search on barrel " + barrelId + ": " + e.getMessage());
             }
-        }
-
-        // update top words in database
-        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
-            IBarrel barrel = barrelEntry.getValue();
-
-            barrel.uptadeTopWords(search);
-        }        
+        }       
 
         if (!searchSucceeded) {
             System.err.println("[Gateway] All barrels failed for search: " + search);
