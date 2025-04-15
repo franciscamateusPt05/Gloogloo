@@ -31,7 +31,7 @@ public class Downloader {
     private static final String GATEWAY_CONFIG_FILE = "src/main/java/org/example/Properties/gateway.properties";
     private static final String QUEUE_CONFIG_FILE = "src/main/java/org/example/Properties/queue.properties";
 
-    private Set<String> stopWords; 
+    private Set<String> stopWords;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     public Downloader() {
@@ -201,27 +201,17 @@ public class Downloader {
     private static volatile boolean running = true;
     // Main method remains unchanged
     public static void main(String[] args) throws InterruptedException {
+        int numDownloaders = 5;
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("\nCtrl + C detetado! A terminar...");
-            running = false; // Altera a variável de controlo
-        }));
-//
-//        try {
-//            for (int i = 0; i < 5; i++) {
-//                new Downloader().run();
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-
-
-        // Simulação de ciclo contínuo
-        while (running) {
-            System.out.println("O programa está a correr...");
-            new Downloader().run();
+        for (int i = 0; i < numDownloaders; i++) {
+            Thread t = new Thread(() -> {
+                Downloader d = new Downloader();
+                while (running) {
+                    d.run();
+                }
+            });
+            t.start();
         }
 
-        System.out.println("Programa terminado.");
     }
 }

@@ -18,11 +18,11 @@ import org.example.SearchResult;
 
 public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private static final Logger logger = Logger.getLogger(BarrelImpl.class.getName());
-    private Connection conn;
+    public Connection conn;
 
-    String rmiUrl;
-    String dbUrl;
-    String ficheiro;
+    public String rmiUrl;
+    public String dbUrl;
+    public String ficheiro;
 
 
 
@@ -49,14 +49,6 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         logger.info("RMI URL: " + rmiUrl);
         logger.info("Banco de Dados URL: " + dbUrl);
 
-        // Conectar ao banco de dados do Barrel
-        try {
-            this.conn = DriverManager.getConnection(dbUrl);
-            conn.setAutoCommit(false);
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Erro ao conectar ao banco de dados: " + e.getMessage());
-            throw new RemoteException("Erro ao conectar ao banco de dados", e);
-        }
 
     }
 
@@ -121,11 +113,13 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             try {
                 if (this.conn != null) {
                     this.conn.rollback();
+                    this.conn.close();
 
                 }
             } catch (SQLException ex) {
                 ex.printStackTrace();
                 this.conn.rollback();
+                this.conn.close();
             }
             throw new RemoteException("Erro ao adicionar informações ao índice", e);
         }
@@ -141,12 +135,12 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("SELECT u.url, u.titulo, u.citacao, u.ranking, ")
-                    .append("GROUP_CONCAT(DISTINCT ul.from_url) AS incoming_links, ")
-                    .append("COUNT(DISTINCT w.word) AS matched_words ")
-                    .append("FROM word_url w ")
-                    .append("JOIN urls u ON w.url = u.url ")
-                    .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
-                    .append("WHERE w.word IN (");
+                .append("GROUP_CONCAT(DISTINCT ul.from_url) AS incoming_links, ")
+                .append("COUNT(DISTINCT w.word) AS matched_words ")
+                .append("FROM word_url w ")
+                .append("JOIN urls u ON w.url = u.url ")
+                .append("LEFT JOIN url_links ul ON u.url = ul.to_url ")
+                .append("WHERE w.word IN (");
 
         // Dynamically add placeholders
         for (int i = 0; i < words.length; i++) {
@@ -156,9 +150,9 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             }
         }
         queryBuilder.append(") ")
-                    .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
-                    .append("HAVING matched_words = ? ")
-                    .append("ORDER BY u.ranking DESC, matched_words DESC;");
+                .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
+                .append("HAVING matched_words = ? ")
+                .append("ORDER BY u.ranking DESC, matched_words DESC;");
 
         try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
             int index = 1;
@@ -201,13 +195,13 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             // Update the 'top' value for each word in the search array
             try (PreparedStatement updateStmt = this.conn.prepareStatement(
                     "UPDATE word SET top = top + 1 WHERE word = ?")) {
-                
+
                 for (String word : words) {
                     System.out.println("Updating top for word: " + word); // Debugging line
                     updateStmt.setString(1, word);
                     int rowsAffected = updateStmt.executeUpdate();
                     System.out.println("Rows affected: " + rowsAffected); // Debugging line
-                    
+
                     // If no rows were affected, maybe the word doesn't exist
                     if (rowsAffected == 0) {
                         System.out.println("No rows updated for word: " + word); // Debugging line
@@ -217,7 +211,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
             // Commit the transaction
             this.conn.commit();
-            
+
         } catch (SQLException e) {
             e.printStackTrace();
             try {
@@ -238,11 +232,11 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
-        String query = "SELECT from_url FROM url_links WHERE to_url = ?;"; 
-    
+        String query = "SELECT from_url FROM url_links WHERE to_url = ?;";
+
         try (PreparedStatement stmt = this.conn.prepareStatement(query)) {
             stmt.setString(1, url);
-    
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     connectedUrls.add(rs.getString(1));
@@ -252,10 +246,10 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             e.printStackTrace();
             throw new RemoteException("Database query failed", e);
         }
-    
+
         return new SearchResult(url, connectedUrls);
     }
-    
+
 
 
     @Override
@@ -301,7 +295,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     public int getSize() throws RemoteException {
 
-    String query = "SELECT COUNT(*) FROM word_url";  // Query to count rows in word_url table
+        String query = "SELECT COUNT(*) FROM word_url";  // Query to count rows in word_url table
 
         try (Connection connection = DriverManager.getConnection(dbUrl);
              Statement stmt = connection.createStatement();
@@ -320,7 +314,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
-     public Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException {
+    public Map<String, Integer> getTopFrequentWords(int limit) throws RemoteException {
         Map<String, Integer> frequentWords = new HashMap<>();
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
             String query = new StringBuilder()
@@ -338,7 +332,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
                 stmt.setInt(1, limit);
                 ResultSet rs = stmt.executeQuery();
-                
+
                 while (rs.next()) {
                     frequentWords.put(rs.getString("word"), rs.getInt("frequency"));
                 }
@@ -352,5 +346,16 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     public String getFicheiro() throws RemoteException {
         return ficheiro;
+    }
+
+    public void connect() throws RemoteException {
+        // Conectar ao banco de dados do Barrel
+        try {
+            this.conn = DriverManager.getConnection(dbUrl);
+            conn.setAutoCommit(false);
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Erro ao conectar ao banco de dados: " + e.getMessage());
+            throw new RemoteException("Erro ao conectar ao banco de dados", e);
+        }
     }
 }

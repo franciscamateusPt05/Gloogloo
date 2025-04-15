@@ -11,6 +11,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.sql.SQLException;
 import java.util.*;
 
 import org.example.Barrel.*;
@@ -81,7 +82,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.out.println("Connected to Queue: " + queueUrl);
 
             // Check available barrels
-            checkActiveBarrels(barrelProp); 
+            checkActiveBarrels(barrelProp);
 
         } catch (IOException e) {
             System.err.println("Error loading properties: " + e.getMessage());
@@ -107,7 +108,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         String host = prop.getProperty(prefix + ".rmi.host", "localhost");
         String port = prop.getProperty(prefix + ".rmi.port", "1112");
         String service = prop.getProperty(prefix + ".rmi.service_name", "QueueService");
-    
+
         if (host == null || port == null || service == null) {
             throw new IllegalArgumentException("Missing RMI configuration for " + prefix);
         }
@@ -118,43 +119,43 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private void checkActiveBarrels(Properties prop) throws IOException {
         activeBarrels.clear();
         int i = 1;
-    
+
         while (true) {
             String barrelPrefix = "barrel" + i;
             String host = prop.getProperty(barrelPrefix + ".rmi.host");
             String port = prop.getProperty(barrelPrefix + ".rmi.port");
             String serviceName = prop.getProperty(barrelPrefix + ".rmi.service_name");
-    
+
             // No more barrels defined in properties
             if (host == null || port == null || serviceName == null) {
                 break;
             }
-    
+
             String barrelUrl = String.format("rmi://%s:%s/%s", host, port, serviceName);
-    
+
             try {
                 IBarrel barrel = (IBarrel) Naming.lookup(barrelUrl);
                 activeBarrels.put(barrelPrefix, barrel);
-    
+
                 // Initialize stats if not already
                 responseTimes.putIfAbsent(barrelPrefix, new BarrelStats());
-    
+
                 System.out.println("Connected to active barrel: " + barrelUrl);
             } catch (Exception e) {
                 System.err.println("Could not connect to barrel at: " + barrelUrl);
                 System.err.println("Reason: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             }
-    
+
             i++;
         }
-    
+
         if (activeBarrels.isEmpty()) {
             System.err.println("No active barrels available!");
         } else {
             selectRandomBarrel(); // pick one from available ones
         }
     }
-    
+
 
 
     private void selectRandomBarrel() {
@@ -194,13 +195,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         List<SearchResult> results = new ArrayList<>();
         boolean searchSucceeded = false;
 
-        // update top words in database
-        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
-            IBarrel barrel = barrelEntry.getValue();
-
-            barrel.uptadeTopWords(search);
-        } 
-
         // Try searching with all active barrels
         for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
             String barrelId = barrelEntry.getKey();
@@ -210,7 +204,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             try {
                 long startTime = System.nanoTime();
-                results = barrel.search(search); 
+                results = barrel.search(search);
                 long endTime = System.nanoTime();
                 double responseTime = (endTime - startTime) / 1_000_000.0;
                 responseTime = (double) Math.round(responseTime * 100) / 100;
@@ -219,18 +213,25 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                 BarrelStats stats = responseTimes.get(barrelId);
                 stats.addResponseTime(responseTime);
 
-                updateStatistics(search, responseTime); 
+                updateStatistics(search, responseTime);
 
                 if (!results.isEmpty()) {
-                    selectedBarrel = barrel; 
+                    selectedBarrel = barrel;
                     selectedBarrelId = barrelId;
-                    searchSucceeded = true; 
-                    break; 
+                    searchSucceeded = true;
+                    break;
                 }
             } catch (IOException e) {
                 System.err.println("[Gateway] Error during search on barrel " + barrelId + ": " + e.getMessage());
             }
-        }       
+        }
+
+        // update top words in database
+        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+            IBarrel barrel = barrelEntry.getValue();
+
+            barrel.uptadeTopWords(search);
+        }
 
         if (!searchSucceeded) {
             System.err.println("[Gateway] All barrels failed for search: " + search);
@@ -259,40 +260,40 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.out.println("[Gateway] No selected barrel available.");
             return new ArrayList<>();
         }
-    
+
         try {
             long startTime = System.nanoTime();
             List<String> topSearches = selectedBarrel.getTopSearches();
             long endTime = System.nanoTime();
             double responseTime = (endTime - startTime) / 1_000_000.0;
             responseTime = (double) Math.round(responseTime * 100) / 100;
-    
+
             BarrelStats stats = responseTimes.get(selectedBarrelId);
             if (stats != null) {
                 stats.addResponseTime(responseTime);
             }
-    
+
             return topSearches != null ? topSearches : new ArrayList<>();
-    
+
         } catch (IOException e) {
             System.err.println("[Gateway] Error during getTopSearches on selected barrel " + selectedBarrelId + ": " + e.getMessage());
             return new ArrayList<>();
         }
     }
-    
+
 
     private void updateStatistics(String[] search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
         HashMap<String, Double> response = new HashMap<>();
         HashMap<String, Integer> barrelSizes = new HashMap<>();
-        
+
         response.put(selectedBarrelId, responseTime);
         topSearches = getTopSearches();
-    
+
         for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
             String barrelId = barrelEntry.getKey();
             IBarrel barrel = barrelEntry.getValue();
-    
+
             try {
                 // Query the real barrel size dynamically from the barrel itself
                 int barrelSize = barrel.getSize(); // Assuming IBarrel has a method getBarrelSize
@@ -302,7 +303,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                 barrelSizes.put(barrelId, 0);  // Default to 0 if error occurs
             }
         }
-    
+
         // Add average response times to the statistics
         HashMap<String, Double> averageResponseTimes = new HashMap<>();
         for (Map.Entry<String, BarrelStats> entry : responseTimes.entrySet()) {
@@ -310,12 +311,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             BarrelStats stats = entry.getValue();
             averageResponseTimes.put(barrelId, stats.getAverageResponseTime());
         }
-    
+
         // Set the updated data to currentStats
         currentStats.setTopSearches(topSearches);
         currentStats.setResponseTimes(averageResponseTimes);
         currentStats.setBarrelIndexSizes(barrelSizes);  // Add barrel sizes
-    
+
         // Notify listeners after updating
         try {
             notifyListeners();  // Notify clients of the updated stats
@@ -323,7 +324,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.err.println("Failed to notify listeners: " + e.getMessage());
         }
     }
-    
+
 
     public synchronized SystemStatistics getStatistics() throws RemoteException {
         return currentStats;
@@ -397,7 +398,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     public void registarBarrel(String rmi) throws RemoteException {
         try {
             try{
-            unregisterBarrel(rmi);
+                unregisterBarrel(rmi);
             } catch (RemoteException e) {
                 System.err.println("Failed to unregister barrel: " + e.getMessage());
             }
@@ -417,12 +418,17 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
                 //Sincronização
                 sincronizar(sinc.getFicheiro(), barrel.getFicheiro());
+
             }
+            barrel.connect();
+
             this.activeBarrels.put(rmi, barrel);
             System.out.println("Barrel registado com sucesso: " + rmi);
 
-        } catch (NotBoundException | MalformedURLException e) {
+        } catch (NotBoundException e) {
             System.err.println("Erro ao registar o Barrel: " + e.getMessage());
+            throw new RuntimeException(e);
+        } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
     }
