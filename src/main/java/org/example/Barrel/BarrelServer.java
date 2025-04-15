@@ -46,7 +46,7 @@ public class BarrelServer {
             IGateway gateaway= (IGateway) Naming.lookup(gateawayURL);
             gateaway.registarBarrel(barrel1RmiUrl);
             logger.info("Serviço Barrel 1 registrado em " + barrel1RmiUrl);
-            System.out.println("BarrelService1 e BarrelService2 estão em execução...");
+            System.out.println("BarrelService1 em executado com sucesso!");
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Erro ao registrar os serviços RMI: " + e.getMessage());

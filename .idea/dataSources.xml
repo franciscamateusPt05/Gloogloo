@@ -13,11 +13,11 @@
       </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="barrel1" uuid="5b5311ba-b8e3-4ea3-99ac-5c4b86dd2663">
+    <data-source source="LOCAL" name="barrel1" uuid="63d4b067-f666-4bde-80a4-bf18eb420252">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/Barrels/Barrel1/barrel1.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:Barrels/Barrel1/barrel1.db</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
       </jdbc-additional-properties>
@@ -31,11 +31,11 @@
         </library>
       </libraries>
     </data-source>
-    <data-source source="LOCAL" name="barrel2" uuid="d8dfbb88-1b5f-43fd-913d-11ce1a51ae9d">
+    <data-source source="LOCAL" name="barrel2" uuid="14afa626-8bf2-4290-91f5-f58c8b230b11">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/Barrels/Barrel2/barrel2.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:Barrels/Barrel2/barrel2.db</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
       </jdbc-additional-properties>

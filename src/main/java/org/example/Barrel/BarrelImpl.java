@@ -53,7 +53,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     // Método para adicionar uma palavra ao índice associada a uma URL
     @Override
-    public void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
+    public synchronized void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
 
         try {
             if (this.conn == null || this.conn.isClosed()) {
@@ -198,7 +198,12 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return results;
     }
 
+<<<<<<< Updated upstream
     public void updateTopWords(String[] words) throws RemoteException {
+=======
+    public synchronized void uptadeTopWords(String[] words) throws RemoteException{
+        // Start a transaction
+>>>>>>> Stashed changes
         try {
             if (this.conn == null || this.conn.isClosed()) {
                 logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
