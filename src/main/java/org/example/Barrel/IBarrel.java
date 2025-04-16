@@ -3,6 +3,7 @@ package org.example.Barrel;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +26,7 @@ public interface IBarrel extends Remote {
      * @return Lista de URLs onde a palavra foi encontrada.
      * @throws RemoteException Se ocorrer um erro na comunicação RMI.
      */
-    List<SearchResult> search(String[] search) throws RemoteException;
+    List<SearchResult> search(ArrayList<String> search) throws RemoteException;
 
     /**
      * Searches for all URL connections of the given URL.
@@ -46,7 +47,7 @@ public interface IBarrel extends Remote {
 
     String getFicheiro() throws RemoteException;
 
-    void updateTopWords(String[] words) throws RemoteException;
+    void updateTopWords(ArrayList<String> words) throws RemoteException;
 
     void connect() throws RemoteException;
 }

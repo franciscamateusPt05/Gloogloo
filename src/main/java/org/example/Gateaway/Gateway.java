@@ -182,7 +182,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         System.out.println("URL inserted successfully into Queue");
     }
 
-    public List<SearchResult> search(String[] search) throws RemoteException {
+    public List<SearchResult> search(ArrayList<String> search) throws RemoteException {
         // Refresh barrels and select a random barrel every time a search is performed
         refreshAndSelectBarrel();
 
@@ -281,7 +281,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
 
-    private void updateStatistics(String[] search, double responseTime) {
+    private void updateStatistics(ArrayList<String> search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
         HashMap<String, Double> response = new HashMap<>();
         HashMap<String, Integer> barrelSizes = new HashMap<>();
@@ -348,8 +348,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             BarrelStats stats = responseTimes.get(selectedBarrelId);
             stats.addResponseTime(responseTime);
 
-            String[] url_ = new String[1];
-            url_[0] = url;
+            ArrayList<String> url_ = new ArrayList<>();
+            url_.add(url);
 
             updateStatistics(url_, responseTime);
 

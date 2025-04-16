@@ -7,6 +7,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Properties;
@@ -214,17 +215,15 @@ public class Main extends UnicastRemoteObject implements IStatistics {
             searchQuery = normalizeWords(searchQuery);
 
             List<String> stopwords = gateway.getStopwords();
-            String[] search;
-            search = searchQuery.split(" ");
 
-            String[] filteredSearch = new String[search.length];
-            int filteredCount = 0;
+            String[] search = searchQuery.trim().split("\\s+");
+
+            ArrayList<String> filteredSearch = new ArrayList<>();
 
             // Iterate over each word in the search query
             for (String word : search) {
                 if (!stopwords.contains(word.trim())) {
-                    filteredSearch[filteredCount] = word.trim();
-                    filteredCount++;
+                    filteredSearch.add(word.trim());
                 }
             }
 

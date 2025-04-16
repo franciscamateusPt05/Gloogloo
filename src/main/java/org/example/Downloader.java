@@ -226,14 +226,10 @@ public class Downloader {
 
     private static volatile boolean running = true;
     public static void main(String[] args) throws InterruptedException {
-<<<<<<< Updated upstream
         int numDownloaders = 10;
 
         Downloader stopwordManager = new Downloader();
         stopwordManager.stopWordsUpdater(); 
-=======
-        int numDownloaders = 1;
->>>>>>> Stashed changes
 
         for (int i = 0; i < numDownloaders; i++) {
             Thread t = new Thread(() -> {

@@ -48,7 +48,6 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         logger.info("RMI URL: " + rmiUrl);
         logger.info("Banco de Dados URL: " + dbUrl);
 
-
     }
 
     // Método para adicionar uma palavra ao índice associada a uma URL
@@ -127,10 +126,10 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     }
 
-    public List<SearchResult> search(String[] words) throws RemoteException {
+    public List<SearchResult> search(ArrayList<String> words) throws RemoteException {
         List<SearchResult> results = new ArrayList<>();
 
-        if (words == null || words.length == 0) {
+        if (words == null || words.size() == 0) {
             return results;
         }
 
@@ -144,9 +143,9 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 .append("WHERE w.word IN (");
 
         // Dynamically add placeholders
-        for (int i = 0; i < words.length; i++) {
+        for (int i = 0; i < words.size(); i++) {
             queryBuilder.append("?");
-            if (i < words.length - 1) {
+            if (i < words.size() - 1) {
                 queryBuilder.append(", ");
             }
         }
@@ -172,7 +171,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 stmt.setString(index++, word);
             }
 
-            stmt.setInt(index, words.length);
+            stmt.setInt(index, words.size());
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -198,12 +197,8 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return results;
     }
 
-<<<<<<< Updated upstream
-    public void updateTopWords(String[] words) throws RemoteException {
-=======
-    public synchronized void uptadeTopWords(String[] words) throws RemoteException{
+    public synchronized void updateTopWords(ArrayList<String> words) throws RemoteException{
         // Start a transaction
->>>>>>> Stashed changes
         try {
             if (this.conn == null || this.conn.isClosed()) {
                 logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
