@@ -245,7 +245,7 @@ public class Downloader {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Shutting down...");
             running = false;
-            stopwordManager.shutdown(); 
+            stopwordManager.shutdown();
         }));
 
     }
