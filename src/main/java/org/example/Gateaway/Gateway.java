@@ -11,6 +11,10 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.*;
 
 import org.example.Barrel.*;
@@ -415,8 +419,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                     break; // Remove este break se quiser processar todos os barrels
                 }
 
-                //Sincronização
+                sinc.darLock();
                 sincronizar(sinc.getFicheiro(), barrel.getFicheiro());
+                sinc.darUnlock();
 
             }
             barrel.connect();
@@ -428,6 +433,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.err.println("Erro ao registar o Barrel: " + e.getMessage());
             throw new RuntimeException(e);
         } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }

@@ -37,7 +37,7 @@ public class Barrel2Server {
             String barrel1ServiceName = properties.getProperty("barrel2.rmi.service_name");
             String barrel1RmiUrl = String.format("rmi://%s:%s/%s", barrel1Host, barrel1Port, barrel1ServiceName);
 
-            BarrelImpl barrelService1 = new BarrelImpl("barrel2","Barrels/Barrel2/barrel2.db");
+            BarrelImpl barrelService1 = new BarrelImpl("barrel2","Barrels/Barrel2/barrel2");
             Naming.rebind(barrel1RmiUrl, barrelService1);
 
             Properties prop = loadProperties("src/main/java/org/example/Properties/gateway.properties");

@@ -24,8 +24,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     public String ficheiro;
 
 
-
-    public BarrelImpl(String barrelName,String ficheiro) throws RemoteException {
+    public BarrelImpl(String barrelName, String ficheiro) throws RemoteException {
         super();
 
         Properties properties = new Properties();
@@ -112,17 +111,17 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             }
 
             conn.commit();
-    } catch (SQLException e) {
-        e.printStackTrace();
-        try {
-            if (this.conn != null && !this.conn.getAutoCommit()) {
-                this.conn.rollback();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try {
+                if (this.conn != null && !this.conn.getAutoCommit()) {
+                    this.conn.rollback();
+                }
+            } catch (SQLException rollbackEx) {
+                rollbackEx.printStackTrace();
             }
-        } catch (SQLException rollbackEx) {
-            rollbackEx.printStackTrace();
+            throw new RemoteException("Erro ao adicionar informações ao índice", e);
         }
-        throw new RemoteException("Erro ao adicionar informações ao índice", e);
-    }
 
     }
 
@@ -153,7 +152,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 .append("GROUP BY u.url, u.titulo, u.citacao, u.ranking ")
                 .append("HAVING matched_words = ? ")
                 .append("ORDER BY u.ranking DESC, matched_words DESC;");
-        
+
         try {
             if (this.conn == null || this.conn.isClosed()) {
                 logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
@@ -165,7 +164,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
 
         try (PreparedStatement stmt = this.conn.prepareStatement(queryBuilder.toString())) {
-            
+
             int index = 1;
             for (String word : words) {
                 stmt.setString(index++, word);
@@ -197,33 +196,33 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return results;
     }
 
-    public synchronized void updateTopWords(ArrayList<String> words) throws RemoteException{
+    public synchronized void updateTopWords(ArrayList<String> words) throws RemoteException {
         // Start a transaction
         try {
             if (this.conn == null || this.conn.isClosed()) {
                 logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
                 connect();
             }
-    
+
             this.conn.setAutoCommit(false);
-    
+
             try (PreparedStatement updateStmt = this.conn.prepareStatement(
                     "UPDATE word SET top = top + 1 WHERE word = ?")) {
-    
+
                 for (String word : words) {
                     System.out.println("Updating top for word: " + word);
                     updateStmt.setString(1, word);
                     int rowsAffected = updateStmt.executeUpdate();
                     System.out.println("Rows affected: " + rowsAffected);
-    
+
                     if (rowsAffected == 0) {
                         System.out.println("No rows updated for word: " + word);
                     }
                 }
             }
-    
+
             this.conn.commit();
-    
+
         } catch (SQLException e) {
             e.printStackTrace();
             try {
@@ -236,7 +235,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             throw new RemoteException("Failed to update word table", e);
         }
     }
-    
+
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
@@ -340,9 +339,9 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     public List<String> getFrequentWords() throws RemoteException {
         List<String> frequentWords = new ArrayList<>();
-    
+
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
-    
+
             // Get total word count
             int wordCount = 0;
             try (PreparedStatement countStmt = conn.prepareStatement("SELECT COUNT(*) FROM word")) {
@@ -351,10 +350,10 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     wordCount = countRs.getInt(1);
                 }
             }
-            
+
             // Set Limit
             int limit = Math.max(1, (int) Math.ceil(wordCount * 0.07));
-    
+
             // Get top frequent words up to that limit
             String query = """
                     SELECT wu.word
@@ -363,7 +362,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     ORDER BY SUM(wu.frequency) DESC
                     LIMIT ?
                     """;
-    
+
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
                 stmt.setInt(1, limit);
                 ResultSet rs = stmt.executeQuery();
@@ -371,15 +370,15 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     frequentWords.add(rs.getString("word"));
                 }
             }
-    
+
         } catch (Exception e) {
             e.printStackTrace();
             throw new RemoteException("Database error while fetching frequent words", e);
         }
-    
+
         return frequentWords;
     }
-    
+
 
     public String getFicheiro() throws RemoteException {
         return ficheiro;
@@ -395,4 +394,15 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             throw new RemoteException("Erro ao conectar ao banco de dados", e);
         }
     }
+
+    public void darLock() throws RemoteException {
+        try (Statement stmt = this.conn.createStatement()) {
+            // BEGIN EXCLUSIVE para bloquear completamente
+            stmt.execute("BEGIN EXCLUSIVE");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void darUnlock() throws RemoteException, SQLException {this.conn.commit();}
 }
