@@ -16,6 +16,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.net.SocketException;
+import java.rmi.UnmarshalException;
 
 public class Downloader {
     private static final Logger logger = Logger.getLogger(Downloader.class.getName());
@@ -119,14 +121,16 @@ public class Downloader {
                             synchronized (results) {
                                 results.add(true);
                             }
-                        } catch (Exception e) {
-                            try {
-                                this.gateaway.unregisterBarrel(chave);
-                                System.out.println("Foi removido a URL: " + chave);
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
+                        } catch (UnmarshalException | SocketException e) {
+                            logger.log(Level.WARNING, "RMI connection problem with barrel " + chave, e);
+                            synchronized (results) {
+                                results.add(false);
                             }
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            logger.log(Level.SEVERE, "Error processing URL with barrel " + chave, e);
+                            synchronized (results) {
+                                results.add(false);
+                            }
                         }
                     });
                     threads.add(thread);
