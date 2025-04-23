@@ -121,12 +121,21 @@ public class Downloader {
                             synchronized (results) {
                                 results.add(true);
                             }
-                        } catch (UnmarshalException | SocketException e) {
+                        } catch (UnmarshalException e) {
                             logger.log(Level.WARNING, "RMI connection problem with barrel " + chave, e);
                             synchronized (results) {
                                 results.add(false);
                             }
+                            try {
+                                this.gateaway.unregisterBarrel(chave);
+                                System.out.println("Foi removido a URL: " + chave);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
                         } catch (Exception e) {
+                            synchronized (results) {
+                                results.add(false);
+                            }
                             // Só faz unregister se NÃO for erro de "database is locked"
                             if (e.getMessage() == null || !e.getMessage().toLowerCase().contains("database is locked")) {
                                 try {
