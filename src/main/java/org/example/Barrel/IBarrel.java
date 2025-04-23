@@ -2,6 +2,7 @@ package org.example.Barrel;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,5 +51,9 @@ public interface IBarrel extends Remote {
     void updateTopWords(ArrayList<String> words) throws RemoteException;
 
     void connect() throws RemoteException;
+
+    void darLock() throws RemoteException;
+
+    void darUnlock() throws RemoteException, SQLException;
 }
 

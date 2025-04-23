@@ -127,9 +127,16 @@ public class Downloader {
                                 results.add(false);
                             }
                         } catch (Exception e) {
-                            logger.log(Level.SEVERE, "Error processing URL with barrel " + chave, e);
-                            synchronized (results) {
-                                results.add(false);
+                            // Só faz unregister se NÃO for erro de "database is locked"
+                            if (e.getMessage() == null || !e.getMessage().toLowerCase().contains("database is locked")) {
+                                try {
+                                    this.gateaway.unregisterBarrel(chave);
+                                    System.out.println("Foi removido a URL: " + chave);
+                                } catch (Exception ex) {
+                                    ex.printStackTrace();
+                                }
+                            } else {
+                                System.out.println("Erro de lock no barrel, a ligação será mantida: " + chave);
                             }
                         }
                     });
