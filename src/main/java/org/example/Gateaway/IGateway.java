@@ -69,4 +69,7 @@ public interface IGateway extends Remote {
 
     public List<String> getStopwords() throws RemoteException;
 
+    public  boolean isFlag() throws RemoteException;
+
+
 }

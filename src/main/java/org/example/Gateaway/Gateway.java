@@ -16,6 +16,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.example.Barrel.*;
 import org.example.Queue.*;
@@ -41,6 +42,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     private Map<String, IBarrel> activeBarrels = new HashMap<>();
     private Map<String, BarrelStats> responseTimes = new HashMap<>();
+
+    private final AtomicBoolean isSynchronizing = new AtomicBoolean(false);
 
     public Gateway() throws RemoteException {
         super();
@@ -418,11 +421,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                     sinc = sincc;
                     break; // Remove este break se quiser processar todos os barrels
                 }
-
-                sinc.darLock();
+                isSynchronizing.set(true);
                 sincronizar(sinc.getFicheiro(), barrel.getFicheiro());
-                sinc.darUnlock();
-
+                isSynchronizing.set(false);
             }
             barrel.connect();
 
@@ -433,8 +434,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             System.err.println("Erro ao registar o Barrel: " + e.getMessage());
             throw new RuntimeException(e);
         } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -462,10 +461,14 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             // Copia o banco de dados de origem para o destino, substituindo-o se necessário
             Files.copy(bancoOrigem.toPath(), bancoDestino.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+            Thread.sleep(5000);
             System.out.println("Banco de dados copiado com sucesso!");
         } catch (IOException e) {
             System.err.println("Erro ao copiar o banco de dados: " + e.getMessage());
             e.printStackTrace();
+        } catch (InterruptedException e) {
+            System.out.println("Erro ao copiar o banco de dados: " + e.getMessage());
         }
     }
 
@@ -478,6 +481,10 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             return queue.getStopwords();
         }
         throw new RemoteException("QueueServer not connected.");
+    }
+
+    public boolean isFlag() throws RemoteException {
+        return isSynchronizing.get();
     }
 }
 

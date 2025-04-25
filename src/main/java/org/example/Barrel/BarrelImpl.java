@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -53,76 +54,80 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     @Override
     public synchronized void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
 
-        try {
-            if (this.conn == null || this.conn.isClosed()) {
-                logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
-                connect();
+            try {
+                WriteData(words, url, toUrls, titulo, citaçao);
+            } catch (SQLException e) {
+                e.printStackTrace();
+                try {
+                    if (this.conn != null && !this.conn.getAutoCommit()) {
+                        this.conn.rollback();
+                    }
+                } catch (SQLException rollbackEx) {
+                    rollbackEx.printStackTrace();
+                }
+                throw new RemoteException("Erro ao adicionar informações ao índice", e);
             }
 
-            this.conn.setAutoCommit(false);
+    }
 
-            // Inserir ou atualizar as palavras no banco de dados
-            for (Map.Entry<String, Integer> entry : words.entrySet()) {
-                String word = entry.getKey();
-                int frequency = entry.getValue();
+    private void WriteData(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
 
-                String insertWordSQL = "INSERT INTO word (word) VALUES (?) ON CONFLICT (word) DO NOTHING";
-                try (PreparedStatement stmt = this.conn.prepareStatement(insertWordSQL)) {
-                    stmt.setString(1, word);
-                    stmt.executeUpdate();
-                }
+        if (this.conn == null || this.conn.isClosed()) {
+            logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
+            connect();
+        }
+        this.conn.setAutoCommit(false);
 
-                // Inserir a URL na tabela urls
-                String selectUrlSQL = "SELECT url FROM urls WHERE url = ?";
-                try (PreparedStatement stmt = this.conn.prepareStatement(selectUrlSQL)) {
-                    stmt.setString(1, url);
-                    var resultSet = stmt.executeQuery();
+        // Inserir ou atualizar as palavras no banco de dados
+        for (Map.Entry<String, Integer> entry : words.entrySet()) {
+            String word = entry.getKey();
+            int frequency = entry.getValue();
 
-                    if (!resultSet.next()) {
-                        // Se a URL não existir, insira a nova URL com dados default
-                        String insertUrlSQL = "INSERT INTO urls (url, ranking, titulo, citacao) VALUES (?, 0, ?, ?)";
-                        try (PreparedStatement insertStmt = this.conn.prepareStatement(insertUrlSQL)) {
-                            insertStmt.setString(1, url);
-                            insertStmt.setString(2, titulo);
-                            insertStmt.setString(3, citaçao);
-                            insertStmt.executeUpdate();
-                        }
+            String insertWordSQL = "INSERT INTO word (word) VALUES (?) ON CONFLICT (word) DO NOTHING";
+            try (PreparedStatement stmt = this.conn.prepareStatement(insertWordSQL)) {
+                stmt.setString(1, word);
+                stmt.executeUpdate();
+            }
+
+            // Inserir a URL na tabela urls
+            String selectUrlSQL = "SELECT url FROM urls WHERE url = ?";
+            try (PreparedStatement stmt = this.conn.prepareStatement(selectUrlSQL)) {
+                stmt.setString(1, url);
+                var resultSet = stmt.executeQuery();
+
+                if (!resultSet.next()) {
+                    // Se a URL não existir, insira a nova URL com dados default
+                    String insertUrlSQL = "INSERT INTO urls (url, ranking, titulo, citacao) VALUES (?, 0, ?, ?)";
+                    try (PreparedStatement insertStmt = this.conn.prepareStatement(insertUrlSQL)) {
+                        insertStmt.setString(1, url);
+                        insertStmt.setString(2, titulo);
+                        insertStmt.setString(3, citaçao);
+                        insertStmt.executeUpdate();
                     }
                 }
-
-                String insertWordUrlSQL = "INSERT INTO word_url (word, url, frequency) VALUES (?, ?, ?) ";
-                try (PreparedStatement stmt = this.conn.prepareStatement(insertWordUrlSQL)) {
-                    stmt.setString(1, word);
-                    stmt.setString(2, url);
-                    stmt.setInt(3, frequency);
-                    stmt.executeUpdate();
-                }
             }
 
-
-            // Inserir links de URLs
-            for (String toUrl : toUrls) {
-                String insertLinkSQL = "INSERT INTO url_links (from_url, to_url) VALUES (?, ?)";
-                try (PreparedStatement stmt = this.conn.prepareStatement(insertLinkSQL)) {
-                    stmt.setString(1, url);
-                    stmt.setString(2, toUrl);
-                    stmt.executeUpdate();
-                }
+            String insertWordUrlSQL = "INSERT INTO word_url (word, url, frequency) VALUES (?, ?, ?) ";
+            try (PreparedStatement stmt = this.conn.prepareStatement(insertWordUrlSQL)) {
+                stmt.setString(1, word);
+                stmt.setString(2, url);
+                stmt.setInt(3, frequency);
+                stmt.executeUpdate();
             }
-
-            conn.commit();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            try {
-                if (this.conn != null && !this.conn.getAutoCommit()) {
-                    this.conn.rollback();
-                }
-            } catch (SQLException rollbackEx) {
-                rollbackEx.printStackTrace();
-            }
-            throw new RemoteException("Erro ao adicionar informações ao índice", e);
         }
 
+
+        // Inserir links de URLs
+        for (String toUrl : toUrls) {
+            String insertLinkSQL = "INSERT INTO url_links (from_url, to_url) VALUES (?, ?)";
+            try (PreparedStatement stmt = this.conn.prepareStatement(insertLinkSQL)) {
+                stmt.setString(1, url);
+                stmt.setString(2, toUrl);
+                stmt.executeUpdate();
+            }
+        }
+
+        conn.commit();
     }
 
     public List<SearchResult> search(ArrayList<String> words) throws RemoteException {
@@ -395,14 +400,4 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
-    public void darLock() throws RemoteException {
-        try (Statement stmt = this.conn.createStatement()) {
-            // BEGIN EXCLUSIVE para bloquear completamente
-            stmt.execute("BEGIN EXCLUSIVE");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
     }
-
-    public void darUnlock() throws RemoteException, SQLException {this.conn.commit();}
-}

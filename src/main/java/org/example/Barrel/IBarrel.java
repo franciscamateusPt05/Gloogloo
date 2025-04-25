@@ -52,8 +52,6 @@ public interface IBarrel extends Remote {
 
     void connect() throws RemoteException;
 
-    void darLock() throws RemoteException;
 
-    void darUnlock() throws RemoteException, SQLException;
 }
 
