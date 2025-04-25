@@ -19,7 +19,7 @@
         </library>
       </libraries>
     </data-source>
-    <data-source source="LOCAL" name="barrel2" uuid="3063efb0-b899-40b1-9bc9-b6a95424807e">
+    <data-source source="LOCAL" name="barrel2" uuid="d75fd208-be20-4d39-9751-51ad353b098e">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
