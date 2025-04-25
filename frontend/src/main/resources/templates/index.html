@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gloogloo</title>
+    <link th:href="@{/styles.css}" rel="stylesheet">
+</head>
+<body>
+<audio id="clickSound" th:src="@{/Gloogloo.mp3}" preload="auto"></audio>
+
+<div class="nav">
+    <a href="#">Gloogloo Mail</a>
+    <a href="#">Imagens</a>
+    <a href="#">🔗</a>
+    <a href="#">🌊</a>
+</div>
+
+<div class="logo">
+    <span class="blue">G</span>
+    <span class="red">l</span>
+    <span class="yellow">o</span>
+    <span class="blue">o</span>
+    <span class="green">g</span>
+    <span class="red">l</span>
+    <span class="yellow">o</span>
+    <span class="blue">o</span>
+</div>
+
+<form th:action="@{/search}" method="get">
+    <input type="text" class="search-box" name="query" placeholder="Nade pela web com o Gloogloo">
+
+    <div class="buttons">
+        <button class="button" type="submit">Busca Gloogloo</button>
+        <button class="button" type="submit" formaction="/lucky">Estou com sorte</button>
+    </div>
+</form>
+
+<div class="footer">
+    <div class="footer-links">
+        <div>
+            <a href="#">Sobre</a>
+            <a href="#">Publicidade</a>
+            <a href="#">Negócios</a>
+            <a href="#">Como funciona a Busca</a>
+        </div>
+        <div>
+            <a href="#">Privacidade</a>
+            <a href="#">Termos</a>
+            <a href="#">Configurações</a>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/script.js}"></script>
+</body>
+</html>
