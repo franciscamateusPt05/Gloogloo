@@ -384,7 +384,8 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private String normalizeWords(String text) {
         text = Normalizer.normalize(text, Normalizer.Form.NFD);
-        text = text.replaceAll("[^\\p{ASCII}]", "");
+        text = text.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
+        text = text.replaceAll("[\\p{Punct}]", "").toLowerCase();
         return text;
     }
 }
