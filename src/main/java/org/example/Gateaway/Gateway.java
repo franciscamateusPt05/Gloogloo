@@ -333,6 +333,21 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
 
     public synchronized SystemStatistics getStatistics() throws RemoteException {
+        HashMap<String, Integer> barrelSizes = new HashMap<>();
+        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+            String barrelId = barrelEntry.getKey();
+            IBarrel barrel = barrelEntry.getValue();
+
+            try {
+                // Query the real barrel size dynamically from the barrel itself
+                int barrelSize = barrel.getSize(); // Assuming IBarrel has a method getBarrelSize
+                barrelSizes.put(barrelId, barrelSize);
+            } catch (RemoteException e) {
+                System.err.println("[Gateway] Failed to get size for barrel: " + barrelId);
+                barrelSizes.put(barrelId, 0);  // Default to 0 if error occurs
+            }
+        }
+        this.currentStats.setBarrelIndexSizes(barrelSizes);
         return currentStats;
     }
 

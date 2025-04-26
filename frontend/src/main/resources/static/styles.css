@@ -5,7 +5,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
     background-color: #f8f9fa;
 }
 
@@ -69,6 +69,8 @@ body {
 .buttons {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .button {
@@ -99,136 +101,223 @@ body {
     display: flex;
     justify-content: space-between;
     padding: 0 20px;
+    flex-wrap: wrap;
 }
 
 .footer-links a {
     text-decoration: none;
     color: #70757a;
     font-size: 14px;
-    margin: 0 10px;
+    margin: 5px 10px;
 }
 
 .footer-links a:hover {
     text-decoration: underline;
+}
 
+/* Estilos para a página de resultados */
+.logo-small {
+    font-size: 24px;
+    font-weight: bold;
+    margin-right: 10px;
+}
 
-    /* Estilos para a página de resultados */
-    .logo-small {
-        font-size: 24px;
-        font-weight: bold;
-        margin-right: 10px;
+.search-container {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #ebebeb;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.search-button {
+    margin-left: 10px;
+    padding: 10px 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.results-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.result-count {
+    color: #70757a;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.result-item {
+    margin-bottom: 30px;
+    max-width: 600px;
+}
+
+.result-item h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: normal;
+}
+
+.result-item h3 a {
+    color: #1a0dab;
+    text-decoration: none;
+}
+
+.result-item h3 a:hover {
+    text-decoration: underline;
+}
+
+.result-url {
+    color: #202124;
+    font-size: 14px;
+    margin: 5px 0;
+}
+
+.result-desc {
+    color: #4d5156;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Paginação */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin: 40px 0;
+    flex-wrap: wrap;
+}
+
+.page-link {
+    color: #202124;
+    text-decoration: none;
+    margin: 0 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.page-link:hover {
+    background-color: #f1f3f4;
+}
+
+.active {
+    background-color: #4285F4;
+    color: white;
+}
+
+/* OpenAI Comments */
+.ai-comments {
+    margin: 40px 0;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    max-width: 800px;
+}
+
+.ai-comments h3 {
+    color: #202124;
+    font-size: 18px;
+    margin-top: 0;
+}
+
+.ai-comment {
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .nav {
+        flex-direction: column;
+        align-items: flex-end;
+        padding: 8px;
+    }
+
+    .nav a {
+        font-size: 12px;
+        margin-left: 10px;
+    }
+
+    .logo {
+        margin-top: 40px;
+        margin-bottom: 15px;
+        font-size: 50px;
+    }
+
+    .search-box {
+        width: 70%;
+        font-size: 14px;
+        padding: 0 15px;
+    }
+
+    .buttons {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .button {
+        width: 85%;
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
+    .footer-links {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+    }
+
+    .footer-links a {
+        margin: 0 8px;
     }
 
     .search-container {
-        display: flex;
-        align-items: center;
-        padding: 20px;
-        border-bottom: 1px solid #ebebeb;
-        width: 100%;
-        max-width: 1200px;
-        margin: 0 auto;
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .search-button {
-        margin-left: 10px;
-        padding: 10px 15px;
-        background-color: #f8f9fa;
-        border: 1px solid #f8f9fa;
-        border-radius: 4px;
-        cursor: pointer;
+        margin-left: 0;
+        margin-top: 8px;
     }
 
     .results-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-
-    .result-count {
-        color: #70757a;
-        font-size: 14px;
-        margin-bottom: 20px;
+        padding: 15px;
     }
 
     .result-item {
-        margin-bottom: 30px;
-        max-width: 600px;
+        max-width: 90%;
+        margin-bottom: 20px;
     }
 
     .result-item h3 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: normal;
+        font-size: 18px;
     }
 
-    .result-item h3 a {
-        color: #1a0dab;
-        text-decoration: none;
-    }
-
-    .result-item h3 a:hover {
-        text-decoration: underline;
-    }
-
-    .result-url {
-        color: #202124;
-        font-size: 14px;
-        margin: 5px 0;
-    }
-
+    .result-url,
     .result-desc {
-        color: #4d5156;
-        font-size: 14px;
-        margin: 0;
+        font-size: 12px;
     }
 
-    /* Paginação */
     .pagination {
-        display: flex;
-        justify-content: center;
-        margin: 40px 0;
         flex-wrap: wrap;
     }
 
     .page-link {
-        color: #202124;
-        text-decoration: none;
-        margin: 0 5px;
-        padding: 5px 10px;
-        border-radius: 4px;
+        margin: 3px;
+        padding: 4px 8px;
+        font-size: 12px;
     }
 
-    .page-link:hover {
-        background-color: #f1f3f4;
-    }
-
-    .active {
-        background-color: #4285F4;
-        color: white;
-    }
-
-    /* OpenAI Comments */
     .ai-comments {
-        margin: 40px 0;
-        padding: 20px;
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        max-width: 800px;
-    }
-
-    .ai-comments h3 {
-        color: #202124;
-        font-size: 18px;
-        margin-top: 0;
-    }
-
-    .ai-comment {
-        background-color: white;
         padding: 15px;
-        border-radius: 8px;
-        margin-top: 10px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 }
-
-
