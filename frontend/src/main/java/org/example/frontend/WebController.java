@@ -3,9 +3,7 @@ package com.example.frontend;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import javax.annotation.Resource;
-import javax.servlet.http.HttpSession;
+import java.rmi.RemoteException;
 
 import com.example.frontend.beans.Number;
 
@@ -205,22 +203,23 @@ public class WebController {
         return "statistics";
     }
 
-    @MessageMapping("/statistics")
+    @MessageMapping("/statistics")  // Endpoint where clients request statistics
     public void sendStatistics() {
         try {
-            SystemStatistics stats = gateway.getStatistics();
+            SystemStatistics stats = gateway.getStatistics();  // Assuming the method fetches stats
 
-            messagingTemplate.convertAndSend("/topicGloogloo/statistics", stats);
+            // Send the statistics to the topic for broadcasting to clients
+            messagingTemplate.convertAndSend("/topicGloogloo/statistics", stats);  // Broadcast statistics
         } catch (Exception e) {
-            messagingTemplate.convertAndSend("/topicGloogloo/statistics", "Error fetching statistics");
+            // If there's an error, send the error message to the topic
+            messagingTemplate.convertAndSend("/topicGloogloo/statistics", "Error fetching statistics: " + e.getMessage());
         }
     }
 
-
-
-    @RequestMapping("/error")
-    public String handleError(HttpServletRequest request) {
-        return "error";
+    @GetMapping("/error")
+    public String showError(@RequestParam String message, Model model) {
+        model.addAttribute("error", message);
+        return "error";  // Return the error page with the error message
     }
 
     private boolean isValidURL(String url) {
