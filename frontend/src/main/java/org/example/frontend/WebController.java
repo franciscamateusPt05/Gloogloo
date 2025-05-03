@@ -28,6 +28,9 @@ public class WebController {
     @Autowired
     private IGateway gateway;
 
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
     @Resource(name = "requestScopedNumberGenerator")
     private Number nRequest;
 
@@ -60,7 +63,7 @@ public class WebController {
         return "redirect:/index";
     }
 
-    @PostMapping("/url")
+    @PostMapping("/insert-url")
     public String insertUrl(@RequestParam String url,
                             @RequestParam(defaultValue = "false") boolean prioritize,
                             Model model) {
@@ -87,11 +90,12 @@ public class WebController {
             return "error";
         }
 
-        return "url"; // Thymeleaf template: url.html
+        return "result-url";
     }
 
 
-    @GetMapping("/search")
+
+    @GetMapping("/index")
     public String search(@RequestParam String input, @RequestParam(defaultValue = "1") int page, Model model) {
         int size = 10;
 
@@ -139,10 +143,10 @@ public class WebController {
             return "error";
         }
 
-        return "search";
+        return "result-search";
     }
 
-    @GetMapping("/connections")
+    @GetMapping("/url-connections")
     public String getConnections(@RequestParam String input, @RequestParam(defaultValue = "1") int page, Model model) {
         int size = 10;
 
@@ -181,30 +185,37 @@ public class WebController {
             return "error";
         }
 
-        return "connections";
+        return "result-url-connections";
     }
 
 
     @GetMapping("/statistics")
-    public String statistics(Model model) {
+    public String showStatistics(Model model) {
         try {
             SystemStatistics stats = gateway.getStatistics();
 
-            if (stats == null) {
-                model.addAttribute("error", "No statistics available.");
-                return "error";
-            } else {
-                model.addAttribute("topSearches", stats.getTopSearches());
-                model.addAttribute("barrelSizes", stats.getBarrelIndexSizes());
-                model.addAttribute("responseTimes", stats.getAverageResponseTimes());
-            }
+            model.addAttribute("topSearches", stats.getTopSearches());
+            model.addAttribute("barrelSizes", stats.getBarrelIndexSizes());
+            model.addAttribute("responseTimes", stats.getAverageResponseTimes());
         } catch (RemoteException e) {
             model.addAttribute("error", "Failed to fetch statistics: " + e.getMessage());
             return "error";
         }
 
-        return "statistics"; 
+        return "statistics";
     }
+
+    @MessageMapping("/statistics")
+    public void sendStatistics() {
+        try {
+            SystemStatistics stats = gateway.getStatistics();
+
+            messagingTemplate.convertAndSend("/topicGloogloo/statistics", stats);
+        } catch (Exception e) {
+            messagingTemplate.convertAndSend("/topicGloogloo/statistics", "Error fetching statistics");
+        }
+    }
+
 
 
     @RequestMapping("/error")

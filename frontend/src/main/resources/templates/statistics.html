@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Statistics</title>
+</head>
+<body>
+    <h2>System Statistics</h2>
+    <div id="stats">Loading...</div>
+
+    <h3>Top Searches</h3>
+    <div id="topSearches"></div>
+
+    <h3>Barrel Sizes</h3>
+    <div id="barrelSizes"></div>
+
+    <h3>Average Response Times</h3>
+    <div id="responseTimes"></div>
+
+    <script type="text/javascript">
+        // Connect to WebSocket using SockJS
+        var socket = new SockJS('/ws');  // Connect to the /ws endpoint
+        var stompClient = Stomp.over(socket);
+
+        // Connect to the WebSocket server
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+
+            // Send a request for the statistics (this could be triggered by a button or page load)
+            stompClient.send("/statistics", {}, "");  // Request statistics from server
+
+            // Subscribe to the /topicGloogloo/statistics topic to receive real-time updates
+            stompClient.subscribe("/topicGloogloo/statistics", function (message) {
+                var stats = message.body;  // Message body can be statistics or error message
+                if (stats.startsWith("Error")) {
+                    // If the message starts with "Error", redirect to error page with the message
+                    window.location.href = '/error?message=' + encodeURIComponent(stats);
+                } else {
+                    // Otherwise, update the statistics on the page
+                    updateStatistics(JSON.parse(stats));
+                }
+            });
+        });
+
+        // Function to update the statistics on the webpage
+        function updateStatistics(stats) {
+            document.getElementById('topSearches').innerHTML = stats.topSearches;
+            document.getElementById('barrelSizes').innerHTML = stats.barrelSizes;
+            document.getElementById('responseTimes').innerHTML = stats.responseTimes;
+        }
+    </script>
+</body>
+</html>
