@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Redireciona após o áudio terminar
             sound.addEventListener('ended', function() {
-                window.location.href = 'templates/results.html'; // Substitua pelo link desejado
+                window.location.href = 'templates/result-search.html'; // Substitua pelo link desejado
             });
         }
     });
