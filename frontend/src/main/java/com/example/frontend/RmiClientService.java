@@ -63,7 +63,7 @@ import org.example.common.SystemStatistics;
                 System.out.println("Connected to Gateway at rmi://" + host + ":" + port + "/" + serviceName);
 
                 // Register the client to receive statistics updates
-                client.gateway.registerStatisticsListener(client);
+                this.gateway.registerStatisticsListener(this);
                 System.out.println("Client registered for statistics updates.");
 
             } catch (IOException | NotBoundException e) {
@@ -82,7 +82,8 @@ import org.example.common.SystemStatistics;
         @Override
         public synchronized void updateStatistics(SystemStatistics stats) throws RemoteException {
             try {
-                messagingTemplate.convertAndSend("/topicGloogloo/statistics", stats);
+                String payload = stats.toString();  // Send as plain string
+                messagingTemplate.convertAndSend("/topicGloogloo/statistics", payload);
             } catch (Exception e) {
                 System.out.println("Error pushing statistics to WebSocket: " + e.getMessage());
             }

@@ -1,52 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>System Statistics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+        }
+        h2, h3 {
+            color: #2c3e50;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 1rem;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
     <h2>System Statistics</h2>
-    <div id="stats">Loading...</div>
+    <div id="stats">Connecting to server...</div>
 
     <h3>Top Searches</h3>
-    <div id="topSearches"></div>
+    <pre id="topSearches">Loading...</pre>
 
     <h3>Barrel Sizes</h3>
-    <div id="barrelSizes"></div>
+    <pre id="barrelSizes">Loading...</pre>
 
     <h3>Average Response Times</h3>
-    <div id="responseTimes"></div>
+    <pre id="responseTimes">Loading...</pre>
 
-    <script type="text/javascript">
-        // Connect to WebSocket using SockJS
-        var socket = new SockJS('/ws');  // Connect to the /ws endpoint
-        var stompClient = Stomp.over(socket);
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <script>
+        const socket = new SockJS('/ws');
+        const stompClient = Stomp.over(socket);
 
-        // Connect to the WebSocket server
         stompClient.connect({}, function (frame) {
             console.log('Connected: ' + frame);
+            stompClient.send("/statistics", {}, "");  // trigger stats push
 
-            // Send a request for the statistics (this could be triggered by a button or page load)
-            stompClient.send("/statistics", {}, "");  // Request statistics from server
-
-            // Subscribe to the /topicGloogloo/statistics topic to receive real-time updates
             stompClient.subscribe("/topicGloogloo/statistics", function (message) {
-                var stats = message.body;  // Message body can be statistics or error message
-                if (stats.startsWith("Error")) {
-                    // If the message starts with "Error", redirect to error page with the message
-                    window.location.href = '/error?message=' + encodeURIComponent(stats);
-                } else {
-                    // Otherwise, update the statistics on the page
-                    updateStatistics(JSON.parse(stats));
-                }
+                const raw = message.body;
+                document.getElementById('stats').innerText = raw;
+
+                // Parse the string and extract sections
+                let topSearches = '';
+                let barrelSizes = '';
+                let responseTimes = '';
+
+                const lines = raw.split('\n');
+                lines.forEach(line => {
+                    if (line.startsWith("Top 10 Searches:")) {
+                        topSearches = line.replace("Top 10 Searches:", "").trim();
+                    } else if (line.startsWith("Barrel Index Sizes:")) {
+                        barrelSizes = line.replace("Barrel Index Sizes:", "").trim();
+                    } else if (line.startsWith("Average Response Times")) {
+                        responseTimes = line.replace("Average Response Times (ms):", "").trim();
+                    }
+                });
+
+                document.getElementById("topSearches").innerText = topSearches;
+                document.getElementById("barrelSizes").innerText = barrelSizes;
+                document.getElementById("responseTimes").innerText = responseTimes;
             });
         });
-
-        // Function to update the statistics on the webpage
-        function updateStatistics(stats) {
-            document.getElementById('topSearches').innerHTML = stats.topSearches;
-            document.getElementById('barrelSizes').innerHTML = stats.barrelSizes;
-            document.getElementById('responseTimes').innerHTML = stats.responseTimes;
-        }
     </script>
 </body>
 </html>

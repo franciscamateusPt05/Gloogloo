@@ -16,6 +16,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.text.Normalizer;
 
@@ -193,7 +194,7 @@ public class WebController {
         return "statistics";
     }
 
-    @MessageMapping("/statistics")  // Endpoint where clients request statistics
+    @MessageMapping("/statistics")
     public void sendStatistics() {
         try {
             SystemStatistics stats = gateway.getStatistics();  // Assuming the method fetches stats
@@ -207,10 +208,11 @@ public class WebController {
     }
 
     @GetMapping("/error")
-    public String showError(@RequestParam String message, Model model) {
-        model.addAttribute("error", message);
-        return "error";  // Return the error page with the error message
+    public String showErrorPage(@RequestParam(name = "message", required = false) String message, Model model) {
+        model.addAttribute("errorMessage", message != null ? message : "Unknown error");
+        return "error"; // assuming error.html is your template
     }
+
 
     private boolean isValidURL(String url) {
         String regex = "^(https?|ftp)://[^\s/$.?#].[^\s]*$";
