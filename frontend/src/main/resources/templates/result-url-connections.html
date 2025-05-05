@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Conexões da URL - Gloogloo</title>
+    <link th:href="@{/styles.css}" rel="stylesheet">
+</head>
+<body>
+
+<h1>Conexões para a URL: <span th:text="${input}"></span></h1>
+
+<div th:if="${error}">
+    <p th:text="${error}" style="color: red;"></p>
+</div>
+
+<div th:if="${urls}">
+    <ul>
+        <li th:each="url : ${urls}">
+            <a th:href="${url}" th:text="${url}" target="_blank"></a>
+        </li>
+    </ul>
+</div>
+
+<!-- Pagination -->
+<div th:if="${totalPages > 1}">
+    <span th:text="'Página ' + ${currentPage} + ' de ' + ${totalPages}"></span>
+    <div>
+        <a th:href="@{/url-connections(input=${input}, page=1)}">Primeira</a>
+        <a th:href="@{/url-connections(input=${input}, page=${prevPage})}">Anterior</a>
+        <a th:href="@{/url-connections(input=${input}, page=${nextPage})}">Próxima</a>
+        <a th:href="@{/url-connections(input=${input}, page=${totalPages})}">Última</a>
+    </div>
+</div>
+
+</body>
+</html>

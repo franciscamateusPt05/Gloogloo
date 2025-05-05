@@ -115,6 +115,8 @@ public class WebController {
                 model.addAttribute("totalPages", totalPages);
                 model.addAttribute("totalResults", totalResults);
                 model.addAttribute("input", input);
+                model.addAttribute("prevPage", page > 1 ? page - 1 : 1);
+                model.addAttribute("nextPage", page < totalPages ? page + 1 : totalPages);
 
             } catch (RemoteException e) {
                 model.addAttribute("error", "Search failed: " + e.getMessage());
@@ -161,6 +163,8 @@ public class WebController {
             model.addAttribute("totalPages", totalPages);
             model.addAttribute("totalResults", totalResults);
             model.addAttribute("input", input);
+            model.addAttribute("prevPage", page > 1 ? page - 1 : 1);
+            model.addAttribute("nextPage", page < totalPages ? page + 1 : totalPages);
 
         } catch (RemoteException e) {
             model.addAttribute("error", "Failed to get connections: " + e.getMessage());
@@ -172,9 +176,6 @@ public class WebController {
 
 
     @GetMapping("/statistics")
-
-
-
     public String showStatistics(Model model) {
         try {
             if (gateway == null) {

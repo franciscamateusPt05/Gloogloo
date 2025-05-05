@@ -2,7 +2,6 @@
 <html lang="pt" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resultado da Busca - Gloogloo</title>
     <link th:href="@{/styles.css}" rel="stylesheet">
 </head>
@@ -26,10 +25,10 @@
 <div>
     <span th:text="'Página ' + ${currentPage} + ' de ' + ${totalPages}"></span>
     <div>
-        <a th:href="@{/index?input=${input}&page=1}">Primeira</a>
-        <a th:href="@{/index?input=${input}&page=${currentPage - 1}}">Anterior</a>
-        <a th:href="@{/index?input=${input}&page=${currentPage + 1}}">Próxima</a>
-        <a th:href="@{/index?input=${input}&page=${totalPages}}">Última</a>
+        <a th:href="@{/index(input=${input}, page=1)}">Primeira</a>
+        <a th:href="@{/index(input=${input}, page=${prevPage})}">Anterior</a>
+        <a th:href="@{/index(input=${input}, page=${nextPage})}">Próxima</a>
+        <a th:href="@{/index(input=${input}, page=${totalPages})}">Última</a>
     </div>
 </div>
 
