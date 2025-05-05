@@ -1,5 +1,6 @@
 package com.example.frontend;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.rmi.RemoteException;
@@ -7,6 +8,7 @@ import java.rmi.RemoteException;
 
 import jakarta.annotation.PostConstruct;
 
+import org.json.JSONException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -84,8 +86,8 @@ public class WebController {
             int size = 10;
 
             try {
+                gateway.hackerNews(input);
                 input = normalizeWords(input);
-
                 List<String> stopwords = gateway.getStopwords();
                 String[] search = input.trim().split("\\s+");
                 ArrayList<String> filteredSearch = new ArrayList<>();
@@ -118,6 +120,10 @@ public class WebController {
             } catch (RemoteException e) {
                 model.addAttribute("error", "Search failed: " + e.getMessage());
                 return "error";
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
 
             return "result-search";

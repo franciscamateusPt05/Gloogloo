@@ -1,9 +1,9 @@
 package org.example.Gateaway;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.rmi.Naming;
@@ -17,6 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.example.Queue.*;
 import org.example.Statistics.BarrelStats;
 import org.example.common.*;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class Gateway extends UnicastRemoteObject implements IGateway {
 
@@ -37,6 +40,10 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private Map<String, BarrelStats> responseTimes = new HashMap<>();
 
     private final AtomicBoolean isSynchronizing = new AtomicBoolean(false);
+
+    private static final String TOP_STORIES_URL = "https://hacker-news.firebaseio.com/v0/topstories.json";
+    private static final String ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/";
+    private static final int MAX_RESULTS = 30;
 
     public Gateway() throws RemoteException {
         super();
@@ -493,6 +500,46 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     public boolean isFlag() throws RemoteException {
         return isSynchronizing.get();
+    }
+
+    public void hackerNews(String termoPesquisa) throws IOException, RemoteException, JSONException {
+        JSONArray topStoryIds = new JSONArray(fetchData(TOP_STORIES_URL));
+        int count = 0;
+
+        for (int i = 0; i < topStoryIds.length() && count < MAX_RESULTS; i++) {
+            int id = topStoryIds.getInt(i);
+            JSONObject story = new JSONObject(fetchData(ITEM_URL + id + ".json"));
+
+            if (story.has("title") && story.has("url")) {
+                String title = story.getString("title");
+                String url = story.getString("url");
+
+                if (title.toLowerCase().contains(termoPesquisa.toLowerCase())) {
+                    queue.addFirst(url); // Adiciona à queue partilhada
+                    System.out.println("Adicionado à queue: " + title + " -> " + url);
+                }
+            }
+            count++;
+        }
+    }
+
+    private String fetchData(String urlString) throws IOException {
+        URL url = new URL(urlString);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+
+        InputStream in = conn.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+        StringBuilder response = new StringBuilder();
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            response.append(line);
+        }
+
+        reader.close();
+        return response.toString();
     }
 }
 

@@ -1,5 +1,8 @@
 package org.example.common;
 
+import org.json.JSONException;
+
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
@@ -65,6 +68,8 @@ public interface IGateway extends Remote {
     public List<String> getStopwords() throws RemoteException;
 
     public  boolean isFlag() throws RemoteException;
+
+    public void hackerNews(String termoPesquisa) throws IOException, RemoteException, JSONException;
 
 
 }
