@@ -76,11 +76,11 @@ public class WebController {
         return "result-url";
     }
 
+
     @GetMapping("/index")
     public String showIndexPage(@RequestParam(value = "input", required = false) String input,
-                                 @RequestParam(defaultValue = "1") int page, Model model) {
+                                @RequestParam(defaultValue = "1") int page, Model model) {
         if (input != null && !input.trim().isEmpty()) {
-            // Perform the search when input is not null or empty
             int size = 10;
 
             try {
@@ -90,7 +90,6 @@ public class WebController {
                 String[] search = input.trim().split("\\s+");
                 ArrayList<String> filteredSearch = new ArrayList<>();
 
-                // Filter out stopwords
                 for (String word : search) {
                     if (!stopwords.contains(word.trim())) {
                         filteredSearch.add(word.trim());
@@ -99,7 +98,6 @@ public class WebController {
 
                 List<SearchResult> results = gateway.search(filteredSearch);
 
-                // Pagination logic
                 int totalResults = results.size();
                 int totalPages = (int) Math.ceil((double) totalResults / size);
 
@@ -111,7 +109,6 @@ public class WebController {
 
                 List<SearchResult> pageResults = results.subList(start, end);
 
-                // Add results and pagination details to the model
                 model.addAttribute("results", pageResults);
                 model.addAttribute("currentPage", page);
                 model.addAttribute("totalPages", totalPages);
@@ -120,13 +117,13 @@ public class WebController {
 
             } catch (RemoteException e) {
                 model.addAttribute("error", "Search failed: " + e.getMessage());
-                return "error"; // Return error page if there's an exception
+                return "error";
             }
 
-            return "result-search"; // Return result-search page if search is successful
+            return "result-search";
         }
 
-        return "index"; // Show the index page if there's no search input
+        return "index";
     }
 
 
@@ -179,6 +176,10 @@ public class WebController {
 
     public String showStatistics(Model model) {
         try {
+            if (gateway == null) {
+                model.addAttribute("error", "Gateway not initialized.");
+                return "error";
+            }
             SystemStatistics stats = gateway.getStatistics();
 
             model.addAttribute("topSearches", stats.getTopSearches());

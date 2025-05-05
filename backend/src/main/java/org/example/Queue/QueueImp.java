@@ -20,7 +20,7 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
             Properties prop = new Properties();
             prop.load(input);
             QUEUE_FILE = prop.getProperty("queue.file", "queue.txt");
-            STOPWORDS_FILE = prop.getProperty("stopwords.file", "stopwords.txt");
+            STOPWORDS_FILE = prop.getProperty("stopwords.file", "backend/stopwords.txt");
             MAX_SIZE = Integer.parseInt(prop.getProperty("queue.max_size", "100"));
         } catch (IOException | NumberFormatException e) {
             QUEUE_FILE = "queue.txt";

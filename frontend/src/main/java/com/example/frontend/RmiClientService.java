@@ -59,6 +59,7 @@ import org.example.common.SystemStatistics;
 
                 Registry registry = LocateRegistry.getRegistry(host, port);
                 client.gateway = (IGateway) registry.lookup(serviceName);
+                this.gateway = client.gateway;
                 System.out.println("Connected to Gateway at rmi://" + host + ":" + port + "/" + serviceName);
 
                 // Register the client to receive statistics updates

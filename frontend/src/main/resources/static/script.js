@@ -1,30 +1,36 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const searchButton = document.querySelector('.button:first-child'); // Seleciona o primeiro botão
+    const searchButton = document.querySelector('.button:first-child');
+    const searchInput = document.querySelector('input[name="input"]');
     const sound = document.getElementById('clickSound');
 
-    // Configura o volume (opcional)
-    if (sound) {
-        sound.volume = 0.5; // Volume médio (0.0 a 1.0)
-    }
+    if (sound) sound.volume = 0.5;
 
-    // Toca o som quando clica no botão
     searchButton.addEventListener('click', function(event) {
-        event.preventDefault(); // Impede o comportamento padrão do botão (se houver)
+        event.preventDefault();
+
+        const inputValue = searchInput.value.trim();
+        if (!inputValue) {
+            alert("Por favor, insira um termo de pesquisa.");
+            return;
+        }
 
         if (sound) {
-            sound.currentTime = 0; // Reinicia o som se já estiver tocando
+            sound.currentTime = 0;
             sound.play().catch(function(error) {
                 console.error("Erro ao tocar som:", error);
-                // Mostra alerta se o navegador bloquear
                 if (error.name === 'NotAllowedError') {
-                    alert("Por favor, permita sons para uma experiência completa!");
+                    alert("Permita sons para uma melhor experiência.");
                 }
             });
 
-            // Redireciona após o áudio terminar
-            sound.addEventListener('ended', function() {
-                window.location.href = 'templates/result-search.html'; // Substitua pelo link desejado
+            sound.addEventListener('ended', function redirectAfterSound() {
+                // Redireciona para o controlador Spring
+                window.location.href = `/index?input=${encodeURIComponent(inputValue)}&page=1`;
+                sound.removeEventListener('ended', redirectAfterSound); // Evita múltiplos triggers
             });
+        } else {
+            // Se o som não existir, redireciona logo
+            window.location.href = `/index?input=${encodeURIComponent(inputValue)}&page=1`;
         }
     });
 });
