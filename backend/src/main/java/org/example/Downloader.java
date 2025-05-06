@@ -28,7 +28,7 @@ public class Downloader {
     private String gateawayURL;
 
     // Caminho do arquivo de propriedades
-    private static final String GATEWAY_CONFIG_FILE = "backend/src/main/java/org/example/Properties/gateway.properties";
+    private static final String GATEWAY_CONFIG_FILE = "frontend/src/main/resources/gateway.properties";
     private static final String QUEUE_CONFIG_FILE = "backend/src/main/java/org/example/Properties/queue.properties";
 
     private Set<String> stopWords;

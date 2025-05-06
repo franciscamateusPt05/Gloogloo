@@ -14,7 +14,7 @@ public class BarrelServer {
 
     private static final Logger logger = Logger.getLogger(Barrel2Server.class.getName());
     private static final String BARREL_CONFIG_FILE = "backend/src/main/java/org/example/Properties/barrel.properties";
-    private static final String GATEWAY_CONFIG_FILE = "backend/src/main/java/org/example/Properties/gateway.properties";
+    private static final String GATEWAY_CONFIG_FILE = "frontend/src/main/resources/gateway.properties";
 
 
     public static void main(String[] args) {

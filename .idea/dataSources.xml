@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="barrel1" uuid="403367a5-950a-4ea8-837c-baf88b86e8eb">
+    <data-source source="LOCAL" name="barrel1" uuid="a3c77797-d440-4318-8a68-1f30e2e81eb8">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:Barrels/Barrel1/barrel1</jdbc-url>
+      <jdbc-url>jdbc:sqlite:backend/Barrels/Barrel1/barrel1.db</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
       </jdbc-additional-properties>
@@ -19,11 +19,11 @@
         </library>
       </libraries>
     </data-source>
-    <data-source source="LOCAL" name="barrel2" uuid="0ab5df7f-5576-432c-a517-2261080adb6c">
+    <data-source source="LOCAL" name="barrel2" uuid="fbc213b9-d758-4286-b872-8cf1f75f516b">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:Barrels/Barrel2/barrel2</jdbc-url>
+      <jdbc-url>jdbc:sqlite:backend/Barrels/Barrel2/barrel2.db</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
       </jdbc-additional-properties>

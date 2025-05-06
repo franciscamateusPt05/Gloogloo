@@ -18,7 +18,7 @@ import org.example.common.*;
 public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static final String LINE_BREAK = "=".repeat(30);
-    private static final String CONFIG_FILE = "backend/src/main/java/org/example/Properties/gateway.properties";
+    private static final String CONFIG_FILE = "frontend/src/main/resources/gateway.properties";
 
     private IGateway gateway;
     private boolean isAdminPageOpen = false;
