@@ -1,9 +1,9 @@
 package org.example.Gateaway;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.rmi.Naming;
@@ -17,6 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.example.Queue.*;
 import org.example.Statistics.BarrelStats;
 import org.example.common.*;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class Gateway extends UnicastRemoteObject implements IGateway {
 
@@ -37,6 +39,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private Map<String, BarrelStats> responseTimes = new HashMap<>();
 
     private final AtomicBoolean isSynchronizing = new AtomicBoolean(false);
+
+    private static final String TOP_STORIES_URL = "https://hacker-news.firebaseio.com/v0/topstories.json";
+    private static final String ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/";
 
     public Gateway() throws RemoteException {
         super();
@@ -211,6 +216,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             try {
                 long startTime = System.nanoTime();
                 results = barrel.search(search);
+                hacker(String.join(" ",search));
                 long endTime = System.nanoTime();
                 double responseTime = (endTime - startTime) / 1_000_000.0;
                 responseTime = (double) Math.round(responseTime * 100) / 100;
@@ -493,6 +499,52 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     public boolean isFlag() throws RemoteException {
         return isSynchronizing.get();
+    }
+
+    @Override
+    public void hacker(String title) throws RemoteException {
+        try {
+            JSONArray topStoryIds = new JSONArray(fetchData(TOP_STORIES_URL));
+            int count = 0;
+
+            for (int i = 0; i < topStoryIds.length() && count < 30; i++) {
+                int id = topStoryIds.getInt(i);
+                JSONObject story = new JSONObject(fetchData(ITEM_URL + id + ".json"));
+
+                if (story.has("title") && story.has("url")) {
+                    String storyTitle = story.getString("title");
+                    String url = story.getString("url");
+
+                    if (storyTitle.toLowerCase().contains(title.toLowerCase())) {
+                        queue.addFirst(url);
+                        System.out.println("Adicionado: " + storyTitle + " -> " + url);
+                    }
+                }
+
+                count++;
+            }
+        } catch (IOException e) {
+            throw new RemoteException("Erro ao comunicar com Hacker News API", e);
+        }
+    }
+
+    private static String fetchData(String urlString) throws IOException {
+        URL url = new URL(urlString);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+
+        InputStream inputStream = connection.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+
+        StringBuilder response = new StringBuilder();
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            response.append(line);
+        }
+
+        reader.close();
+        return response.toString();
     }
 }
 

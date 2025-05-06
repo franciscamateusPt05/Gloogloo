@@ -66,5 +66,7 @@ public interface IGateway extends Remote {
 
     public  boolean isFlag() throws RemoteException;
 
+    public void hacker(String title) throws RemoteException;
+
 
 }

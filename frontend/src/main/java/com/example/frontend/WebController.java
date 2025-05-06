@@ -3,6 +3,7 @@ package com.example.frontend;
 import java.util.ArrayList;
 import java.util.List;
 import java.rmi.RemoteException;
+import java.lang.String;
 
 
 import jakarta.annotation.PostConstruct;
@@ -86,7 +87,6 @@ public class WebController {
 
             try {
                 input = normalizeWords(input);
-
                 List<String> stopwords = gateway.getStopwords();
                 String[] search = input.trim().split("\\s+");
                 ArrayList<String> filteredSearch = new ArrayList<>();
