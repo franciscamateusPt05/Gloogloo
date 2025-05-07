@@ -216,7 +216,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             try {
                 long startTime = System.nanoTime();
                 results = barrel.search(search);
-                hacker(String.join(" ",search));
                 long endTime = System.nanoTime();
                 double responseTime = (endTime - startTime) / 1_000_000.0;
                 responseTime = (double) Math.round(responseTime * 100) / 100;
@@ -226,6 +225,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                 stats.addResponseTime(responseTime);
 
                 updateStatistics(search, responseTime);
+
+                hacker(String.join(" ",search));
 
                 if (!results.isEmpty()) {
                     selectedBarrel = barrel;
