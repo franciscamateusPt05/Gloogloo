@@ -83,6 +83,7 @@ public class WebController {
             int size = 10;
 
             try {
+                String input_n = input.trim();
                 input = normalizeWords(input);
                 List<String> stopwords = gateway.getStopwords();
                 String[] search = input.trim().split("\\s+");
@@ -93,10 +94,10 @@ public class WebController {
                         filteredSearch.add(word.trim());
                     }
                 }
-
                 List<SearchResult> results = gateway.search(filteredSearch);
+                //String openai= gateway.getAI(input_n,results);
 
-                String content = String.join(" ",search);
+                String content = String.join(" ",input_n);
                 gateway.hacker(content);
 
                 int totalResults = results.size();
@@ -110,6 +111,7 @@ public class WebController {
 
                 List<SearchResult> pageResults = results.subList(start, end);
 
+                //model.addAttribute("openai", openai);
                 model.addAttribute("results", pageResults);
                 model.addAttribute("currentPage", page);
                 model.addAttribute("totalPages", totalPages);

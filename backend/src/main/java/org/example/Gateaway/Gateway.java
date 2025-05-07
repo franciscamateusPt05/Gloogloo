@@ -48,6 +48,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private static final String TOP_STORIES_URL = "https://hacker-news.firebaseio.com/v0/topstories.json";
     private static final String ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/";
 
+    private static String API_KEY;
+
     public Gateway() throws RemoteException {
         super();
         this.currentStats = new SystemStatistics(new ArrayList<>(), new HashMap<>(), new HashMap<>());
@@ -63,6 +65,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             String host = prop.getProperty("rmi.host", "localhost");
             int port = Integer.parseInt(prop.getProperty("rmi.port", "1099"));
             String serviceName = prop.getProperty("rmi.service_name", "GatewayService");
+
+            API_KEY = prop.getProperty("api_key", "test");
 
             Gateway gateway = new Gateway();
 
@@ -534,7 +538,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     }
 
     @Override
-    public String getAI(String search, ArrayList<SearchResult> result) throws RemoteException {
+    public String getAI(String search, List<SearchResult> result) throws RemoteException {
         String apiKey = "your-api-key-here";
         String openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 

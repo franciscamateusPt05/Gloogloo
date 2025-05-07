@@ -13,6 +13,8 @@
     <p th:text="${error}"></p>
 </div>
 
+<div th:if="${openai}" th:text="${openai}"></div>
+
 <div th:if="${results}">
     <ul>
         <li th:each="result : ${results}">

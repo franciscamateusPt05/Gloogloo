@@ -20,7 +20,7 @@ public interface IGateway extends Remote {
      */
     public void insertURL(String url) throws RemoteException;
 
-    public void addFirst(String url) throws RemoteException;
+    void addFirst(String url) throws RemoteException;
 
     /**
      * Searches for a specified terms and returns the searched results.
@@ -29,7 +29,7 @@ public interface IGateway extends Remote {
      * @return the searched results as a SearchResult object
      * @throws RemoteException if a remote communication error occurs
      */
-    public List<SearchResult> search(ArrayList<String> search) throws RemoteException;
+    List<SearchResult> search(ArrayList<String> search) throws RemoteException;
 
     /**
      * Searches for all URL connections of the given URL.
@@ -38,37 +38,36 @@ public interface IGateway extends Remote {
      * @return the search results as a SearchResult object
      * @throws RemoteException if a remote error occurs during the search
      */
-    public SearchResult getConnections(String url) throws RemoteException;
+    SearchResult getConnections(String url) throws RemoteException;
 
     /**
      * Retrieves the latest system statistics.
      * @return The latest statistics.
      * @throws RemoteException If an RMI error occurs.
      */
-    public SystemStatistics getStatistics() throws RemoteException;
+    SystemStatistics getStatistics() throws RemoteException;
 
     /**
      * Registers a client to receive live statistics updates.
      * @param listener The listener that will receive updates.
      * @throws RemoteException If an RMI error occurs.
      */
-    public void registerStatisticsListener(IStatistics listener) throws RemoteException;
+    void registerStatisticsListener(IStatistics listener) throws RemoteException;
 
     void broadcastStatistics(SystemStatistics stats) throws RemoteException;
     
-    public void registarBarrel(String rmi) throws RemoteException;
+    void registarBarrel(String rmi) throws RemoteException;
 
-    public void unregisterBarrel(String rmi) throws RemoteException;
+    void unregisterBarrel(String rmi) throws RemoteException;
 
-    public Map<String, IBarrel> getBarrels() throws RemoteException;
+    Map<String, IBarrel> getBarrels() throws RemoteException;
+    List<String> getStopwords() throws RemoteException;
 
-    public List<String> getStopwords() throws RemoteException;
+    boolean isFlag() throws RemoteException;
 
-    public  boolean isFlag() throws RemoteException;
+    void hacker(String title) throws RemoteException;
 
-    public void hacker(String title) throws RemoteException;
-
-    public String getAI(String search,ArrayList<SearchResult> result) throws RemoteException;
+    String getAI(String search,List<SearchResult> result) throws RemoteException;
 
 
 }
