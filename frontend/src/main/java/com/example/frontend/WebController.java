@@ -96,6 +96,9 @@ public class WebController {
 
                 List<SearchResult> results = gateway.search(filteredSearch);
 
+                String content = String.join(" ",search);
+                gateway.hacker(content);
+
                 int totalResults = results.size();
                 int totalPages = (int) Math.ceil((double) totalResults / size);
 

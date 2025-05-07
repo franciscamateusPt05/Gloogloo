@@ -13,6 +13,11 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.exceptions.UnirestException;
 
 import org.example.Queue.*;
 import org.example.Statistics.BarrelStats;
@@ -226,7 +231,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
                 updateStatistics(search, responseTime);
 
-                hacker(String.join(" ",search));
+                //hacker(String.join(" ",search));
 
                 if (!results.isEmpty()) {
                     selectedBarrel = barrel;
@@ -502,7 +507,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return isSynchronizing.get();
     }
 
-    @Override
     public void hacker(String title) throws RemoteException {
         try {
             JSONArray topStoryIds = new JSONArray(fetchData(TOP_STORIES_URL));
@@ -527,6 +531,53 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         } catch (IOException e) {
             throw new RemoteException("Erro ao comunicar com Hacker News API", e);
         }
+    }
+
+    @Override
+    public String getAI(String search, ArrayList<SearchResult> result) throws RemoteException {
+        String apiKey = "your-api-key-here";
+        String openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
+
+        ArrayList<String> resultString = new ArrayList<>();
+        for (SearchResult searchResult : result) {
+            resultString.add(searchResult.toString());
+        }
+
+        // Create the request payload
+        JsonObject payload = new JsonObject();
+        payload.addProperty("model", "gpt-3.5-turbo");
+        JsonObject message = new JsonObject();
+        message.addProperty("role", "user");
+        message.addProperty("content", "You are a helpful assistant. I will provide you with several search results or sources related to a specific topic. Your task is to analyze them and produce a clear, concise summary that captures the main insights, trends, or points of interest, highlighting agreements, disagreements, or notable facts. Please focus on what is most relevant to the topic.\n" +
+                "\n" +
+                "The search is: "+
+                search+
+                "\n The search results: "+ resultString);
+        payload.add("messages", new Gson().toJsonTree(new JsonObject[]{message}));
+
+        try {
+            // Make the POST request using Unirest
+            HttpResponse<String> response = Unirest.post(openRouterUrl)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .body(payload.toString())
+                    .asString();
+
+            // Parse the response using Gson
+            Gson gson = new Gson();
+            JsonObject jsonResponse = gson.fromJson(response.getBody(), JsonObject.class);
+
+            // Extract the message content from the response
+            String content = jsonResponse.getAsJsonArray("choices")
+                    .get(0).getAsJsonObject()
+                    .getAsJsonObject("message")
+                    .get("content").getAsString();
+            return content;
+
+        } catch (UnirestException e) {
+            e.printStackTrace();
+        }
+        return "Sem resposta AI";
     }
 
     private static String fetchData(String urlString) throws IOException {

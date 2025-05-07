@@ -68,5 +68,7 @@ public interface IGateway extends Remote {
 
     public void hacker(String title) throws RemoteException;
 
+    public String getAI(String search,ArrayList<SearchResult> result) throws RemoteException;
+
 
 }
