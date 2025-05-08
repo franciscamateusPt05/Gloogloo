@@ -18,9 +18,9 @@ public class QueueServer {
             }
             String prefix = "queue";
 
-            String host = prop.getProperty(prefix + "rmi.host", "localhost");
-            int port = Integer.parseInt(prop.getProperty(prefix + "rmi.port", "1112"));
-            String serviceName = prop.getProperty(prefix + "rmi.service_name", "QueueService");
+            String host = prop.getProperty(prefix + ".rmi.host", "localhost");
+            int port = Integer.parseInt(prop.getProperty(prefix + ".rmi.port", "1112"));
+            String serviceName = prop.getProperty(prefix + ".rmi.service_name", "QueueService");
 
             // Criar e exportar o registo RMI
             LocateRegistry.createRegistry(port);

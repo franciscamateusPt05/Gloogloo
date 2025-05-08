@@ -14,6 +14,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
@@ -66,7 +67,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             int port = Integer.parseInt(prop.getProperty("rmi.port", "1099"));
             String serviceName = prop.getProperty("rmi.service_name", "GatewayService");
 
-            API_KEY = prop.getProperty("api_key", "test");
+            API_KEY = "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";
 
             Gateway gateway = new Gateway();
 
@@ -76,6 +77,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             // Initialize services
             gateway.initialize();
+            List<SearchResult> teste =new ArrayList<>();
+
+            System.out.print(gateway.getAI("Harvard", teste));
 
         } catch (Exception e) {
             System.err.println("Failed to start Gateway: " + e.getMessage());
@@ -539,7 +543,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     @Override
     public String getAI(String search, List<SearchResult> result) throws RemoteException {
-        String apiKey = "your-api-key-here";
+        String apiKey = API_KEY;
         String openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 
         ArrayList<String> resultString = new ArrayList<>();
@@ -547,40 +551,55 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             resultString.add(searchResult.toString());
         }
 
-        // Create the request payload
-        JsonObject payload = new JsonObject();
-        payload.addProperty("model", "gpt-3.5-turbo");
+        // Construção da mensagem
         JsonObject message = new JsonObject();
         message.addProperty("role", "user");
-        message.addProperty("content", "You are a helpful assistant. I will provide you with several search results or sources related to a specific topic. Your task is to analyze them and produce a clear, concise summary that captures the main insights, trends, or points of interest, highlighting agreements, disagreements, or notable facts. Please focus on what is most relevant to the topic.\n" +
-                "\n" +
-                "The search is: "+
-                search+
-                "\n The search results: "+ resultString);
-        payload.add("messages", new Gson().toJsonTree(new JsonObject[]{message}));
+        message.addProperty("content", "You are a helpful assistant. I will provide you with several search results or sources related to a specific topic. Your task is to analyze them and produce a clear, concise summary that captures the main insights, trends, or points of interest, highlighting agreements, disagreements, or notable facts in maximum 5 lines. Please focus on what is most relevant to the topic.\n" +
+                "\nSearch: " + search +
+                "\nSearch results: " + resultString);
+
+        JsonArray messages = new JsonArray();
+        messages.add(message);
+
+        // Payload final
+        JsonObject payload = new JsonObject();
+        payload.addProperty("model", "microsoft/phi-4-reasoning-plus:free");
+        payload.add("messages", messages);
 
         try {
-            // Make the POST request using Unirest
+            // Realizando a solicitação POST
             HttpResponse<String> response = Unirest.post(openRouterUrl)
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
+                    .header("HTTP-Referer", "https://example.com") // Opcional: URL do seu site
+                    .header("X-Title", "FlawlessRead") // Opcional: Título do seu site
                     .body(payload.toString())
                     .asString();
 
-            // Parse the response using Gson
+
+            // Parse da resposta com Gson
             Gson gson = new Gson();
             JsonObject jsonResponse = gson.fromJson(response.getBody(), JsonObject.class);
 
-            // Extract the message content from the response
-            String content = jsonResponse.getAsJsonArray("choices")
-                    .get(0).getAsJsonObject()
-                    .getAsJsonObject("message")
-                    .get("content").getAsString();
-            return content;
+            // Valida se a resposta tem o array "choices"
+            if (jsonResponse.has("choices")) {
+                JsonArray choices = jsonResponse.getAsJsonArray("choices");
+                if (choices.size() > 0) {
+                    JsonObject choice = choices.get(0).getAsJsonObject();
+                    if (choice.has("message")) {
+                        JsonObject messageObj = choice.getAsJsonObject("message");
+                        if (messageObj != null && messageObj.has("content")) {
+                            // Retorna apenas o conteúdo do resumo da IA
+                            return messageObj.get("content").getAsString();
+                        }
+                    }
+                }
+            }
 
         } catch (UnirestException e) {
             e.printStackTrace();
         }
+
         return "Sem resposta AI";
     }
 

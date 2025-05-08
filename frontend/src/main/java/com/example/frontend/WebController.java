@@ -95,7 +95,7 @@ public class WebController {
                     }
                 }
                 List<SearchResult> results = gateway.search(filteredSearch);
-                //String openai= gateway.getAI(input_n,results);
+                String openai= gateway.getAI(input_n,results);
 
                 String content = String.join(" ",input_n);
                 gateway.hacker(content);
@@ -111,7 +111,7 @@ public class WebController {
 
                 List<SearchResult> pageResults = results.subList(start, end);
 
-                //model.addAttribute("openai", openai);
+                model.addAttribute("openai", openai);
                 model.addAttribute("results", pageResults);
                 model.addAttribute("currentPage", page);
                 model.addAttribute("totalPages", totalPages);

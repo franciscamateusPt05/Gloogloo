@@ -252,7 +252,7 @@ public class Downloader {
 
     private static volatile boolean running = true;
     public static void main(String[] args) throws InterruptedException {
-        int numDownloaders = 5;
+        int numDownloaders = 1;
 
         Downloader stopwordManager = new Downloader();
         stopwordManager.stopWordsUpdater(); 
