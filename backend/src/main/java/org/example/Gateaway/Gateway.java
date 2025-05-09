@@ -67,7 +67,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             int port = Integer.parseInt(prop.getProperty("rmi.port", "1099"));
             String serviceName = prop.getProperty("rmi.service_name", "GatewayService");
 
-            API_KEY = "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";
+            API_KEY = "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";
 
             Gateway gateway = new Gateway();
 
@@ -548,37 +548,32 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             resultString.add(searchResult.toString());
         }
 
-        // Construção da mensagem
+        // Prompt atualizada
         JsonObject message = new JsonObject();
         message.addProperty("role", "user");
-        message.addProperty("content", "You are a helpful assistant. I will provide you with several search results or sources related to a specific topic. Your task is to analyze them and produce a clear, concise summary that captures the main insights, trends, or points of interest, highlighting agreements, disagreements, or notable facts in maximum 5 lines. Please focus on what is most relevant to the topic.\n" +
+        message.addProperty("content", "You are a helpful assistant. I will provide you with several search results or sources related to a specific topic. Your task is to analyze them and produce a clear, concise summary that captures the main insights, trends, or points of interest, highlighting agreements, disagreements, or notable facts in exactly 5 sentences. Please focus on what is most relevant to the topic.\n" +
                 "\nSearch: " + search +
                 "\nSearch results: " + resultString);
 
         JsonArray messages = new JsonArray();
         messages.add(message);
 
-        // Payload final
         JsonObject payload = new JsonObject();
         payload.addProperty("model", "microsoft/phi-4-reasoning-plus:free");
         payload.add("messages", messages);
 
         try {
-            // Realizando a solicitação POST
             HttpResponse<String> response = Unirest.post(openRouterUrl)
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
-                    .header("HTTP-Referer", "https://example.com") // Opcional: URL do seu site
-                    .header("X-Title", "FlawlessRead") // Opcional: Título do seu site
+                    .header("HTTP-Referer", "https://example.com")
+                    .header("X-Title", "FlawlessRead")
                     .body(payload.toString())
                     .asString();
 
-
-            // Parse da resposta com Gson
             Gson gson = new Gson();
             JsonObject jsonResponse = gson.fromJson(response.getBody(), JsonObject.class);
 
-            // Valida se a resposta tem o array "choices"
             if (jsonResponse.has("choices")) {
                 JsonArray choices = jsonResponse.getAsJsonArray("choices");
                 if (choices.size() > 0) {
@@ -586,8 +581,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                     if (choice.has("message")) {
                         JsonObject messageObj = choice.getAsJsonObject("message");
                         if (messageObj != null && messageObj.has("content")) {
-                            // Retorna apenas o conteúdo do resumo da IA
-                            return messageObj.get("content").getAsString();
+                            String fullSummary = messageObj.get("content").getAsString();
+                            return filterLastFiveSentences(fullSummary);
                         }
                     }
                 }
@@ -599,6 +594,17 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
         return "No response from AI";
     }
+
+    private String filterLastFiveSentences(String input) {
+        String[] sentences = input.split("(?<=[.!?])\\s+");
+        StringBuilder result = new StringBuilder();
+        for (int i = sentences.length - 5; i < sentences.length; i++) {
+            result.append(sentences[i]).append(" ");
+        }
+        return result.toString().trim();
+
+    }
+
 
     private static String fetchData(String urlString) throws IOException {
         URL url = new URL(urlString);
@@ -618,5 +624,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         reader.close();
         return response.toString();
     }
+
 }
 
