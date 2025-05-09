@@ -357,7 +357,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             }
 
             // Set Limit
-            int limit = Math.max(1, (int) Math.ceil(wordCount * 0.07));
+            int limit = Math.max(1, (int) Math.ceil(wordCount * 0.05));
 
             // Get top frequent words up to that limit
             String query = """
