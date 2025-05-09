@@ -213,20 +213,26 @@ body {
     font-family: Arial, sans-serif;
     font-size: 15px;
     text-align: center;
-    margin: 20px auto;
+    margin: 30px auto;  /* Increased margin for spacing */
     padding: 10px;
     background-color: #f8f9fa;
     border-radius: 2px;
     max-width: 350px;
+    text-align: left;
 }
 
 .checkbox-container label {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;  /* Changed to align the text to the left */
     gap: 8px;
     margin: 8px 0;
     cursor: pointer;
+}
+
+.checkbox-hackernews,
+.checkbox-openai {
+    margin-bottom: 10px; /* Adding a little space between checkbox sections */
 }
 
 

@@ -94,77 +94,95 @@ public class WebController {
 
     @GetMapping("/index")
     public String showIndexPage(@RequestParam(value = "input", required = false) String input,
-                              @RequestParam(defaultValue = "1") int page, 
-                              Model model,
-                              @ModelAttribute("searchCache") List<SearchResult> searchCache,
-                              @ModelAttribute("inputCache") String inputCache,
-                              @ModelAttribute("openaiCache") String openaiCache,
-                              @RequestParam(defaultValue = "false") boolean hackerNews) {
+                                @RequestParam(value = "page", defaultValue = "1") Integer page,
+                                @RequestParam(value = "hackerNews", defaultValue = "off") String hackerNews,
+                                @RequestParam(value = "ResultOpenAI", defaultValue = "off") String ResultOpenAI,
+                                Model model,
+                                @ModelAttribute("searchCache") List<SearchResult> searchCache,
+                                @ModelAttribute("inputCache") String inputCache,
+                                @ModelAttribute("openaiCache") String openaiCache) {
+        
+        boolean isHackerNews = "on".equals(hackerNews);
+        boolean isResultOpenAI = "on".equals(ResultOpenAI);
 
         if (input == null || input.trim().isEmpty()) {
             return "index";
         }
 
-        int size = 10;
+        final int pageSize = 10;
         input = normalizeWords(input.trim());
-
         boolean isNewSearch = !input.equals(inputCache);
-        String currentOpenAI = openaiCache;
+
+        System.out.println("DEBUG: hackerNews = "+ hackerNews+ ", ResultOpenAI = " + ResultOpenAI);
+        System.out.println("------------------");
+
+        String currentOpenAI = "";
 
         try {
-            if (isNewSearch) {
+
+            // Perform new search if input changed or OpenAI checkbox is checked
+            if (isNewSearch || isResultOpenAI || isHackerNews) {
                 List<String> stopwords = gateway.getStopwords();
-                String[] searchWords = input.split("\\s+");
                 ArrayList<String> filteredSearch = new ArrayList<>();
 
-                for (String word : searchWords) {
+                for (String word : input.split("\\s+")) {
                     if (!stopwords.contains(word)) {
                         filteredSearch.add(word);
                     }
                 }
 
-                // Fetch fresh results and OpenAI response
                 List<SearchResult> freshResults = gateway.search(filteredSearch);
-                currentOpenAI = gateway.getAI(input, freshResults);
 
-                // Update the caches
+                if(isHackerNews){
+                    String content = String.join(" ",input);
+                    gateway.hacker(content);
+                }
+
                 searchCache.clear();
                 searchCache.addAll(freshResults);
                 inputCache = input;
-                openaiCache = currentOpenAI;
-
-                // Update the model with new cache values
                 model.addAttribute("searchCache", searchCache);
                 model.addAttribute("inputCache", inputCache);
-                model.addAttribute("openaiCache", openaiCache);
+
+                if (isResultOpenAI) {
+                    currentOpenAI = gateway.getAI(input, freshResults);
+                    openaiCache = currentOpenAI;
+                    model.addAttribute("openaiCache", openaiCache);
+                    model.addAttribute("openai", openaiCache);
+                } else {
+                    openaiCache = "";
+                    model.addAttribute("openaiCache", openaiCache);
+                    model.addAttribute("openai", openaiCache);
+                }
             }
 
+            // Always get the current OpenAI output from the cache (if any)
+            currentOpenAI = openaiCache;
+
             int totalResults = searchCache.size();
-            int totalPages = (int) Math.ceil((double) totalResults / size);
+            int totalPages = (int) Math.ceil((double) totalResults / pageSize);
 
             if (totalPages == 0) {
-                model.addAttribute("openai", currentOpenAI);
                 model.addAttribute("message", "No results found for your query.");
                 model.addAttribute("results", new ArrayList<>());
+                if(isResultOpenAI) model.addAttribute("openai", currentOpenAI);
+                model.addAttribute("input", input);
                 model.addAttribute("currentPage", 1);
                 model.addAttribute("totalPages", 0);
-                model.addAttribute("input", input);
                 return "result-search";
             }
 
-            if (page < 1) page = 1;
-            if (page > totalPages) page = totalPages;
-
-            int start = (page - 1) * size;
-            int end = Math.min(start + size, totalResults);
+            // Pagination boundaries
+            page = Math.max(1, Math.min(page, totalPages));
+            int start = (page - 1) * pageSize;
+            int end = Math.min(start + pageSize, totalResults);
             List<SearchResult> pageResults = searchCache.subList(start, end);
-            
-            model.addAttribute("openai", currentOpenAI);
+
             model.addAttribute("results", pageResults);
+            model.addAttribute("input", input);
             model.addAttribute("currentPage", page);
             model.addAttribute("totalPages", totalPages);
             model.addAttribute("totalResults", totalResults);
-            model.addAttribute("input", input);
             model.addAttribute("prevPage", page > 1 ? page - 1 : 1);
             model.addAttribute("nextPage", page < totalPages ? page + 1 : totalPages);
 
@@ -175,8 +193,6 @@ public class WebController {
             return "error";
         }
     }
-
-
 
     @GetMapping("/url-connections")
     public String getConnections(@RequestParam String input, @RequestParam(defaultValue = "1") int page, Model model) {

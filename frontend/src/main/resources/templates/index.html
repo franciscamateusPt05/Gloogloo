@@ -29,11 +29,15 @@
 <form th:action="@{/index}" method="get">
     <input type="text" class="search-box" name="input" placeholder="Explore the Web with Gloogloo" required>
 
-    <!-- Checkbox for Hacker News -->
-    <div class="checkbox-container">            
+    <div class="checkbox-container">
         <label>
-            <input type="checkbox" name="hackerNews" value="true" th:checked="${hackerNews}" />
-            Insert Urls from Hacker News Top Stories
+            <input type="checkbox" name="hackerNews" value="on">
+            Insert URLs from Hacker News Top Stories
+        </label>
+        
+        <label>
+            <input type="checkbox" name="ResultOpenAI" value="on">
+            OpenAI Search
         </label>
     </div>
 
@@ -42,6 +46,27 @@
     </div>
 </form>
 
-<script th:src="@{/script.js}"></script>
+<script>document.addEventListener('DOMContentLoaded', function () {
+    const searchButton = document.querySelector('.button:first-child');
+    const searchInput = document.querySelector('input[name="input"]');
+    const form = searchButton.closest('form');
+
+    console.log("Script loaded");
+
+    searchButton.addEventListener('click', function (event) {
+        const inputValue = searchInput.value.trim();
+
+        // If the input value is empty, show an alert and prevent form submission
+        if (!inputValue) {
+            alert("Please, insert a search term.");
+            event.preventDefault(); // prevent submission for validation
+            return;
+        }
+
+        // Proceed with form submission if input is valid
+        form.submit();
+    });
+});</script>
+
 </body>
 </html>
