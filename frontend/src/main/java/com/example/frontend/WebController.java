@@ -30,7 +30,7 @@ import org.example.common.SearchResult;
 @SessionAttributes({"searchCache", "inputCache", "openaiCache"})
 public class WebController {
 
-        @ModelAttribute("searchCache")
+    @ModelAttribute("searchCache")
     public List<SearchResult> searchCache() {
         return new ArrayList<>();
     }
@@ -94,12 +94,12 @@ public class WebController {
 
     @GetMapping("/index")
     public String showIndexPage(@RequestParam(value = "input", required = false) String input,
-                                @RequestParam(defaultValue = "1") int page,
-                                Model model,
-                                @ModelAttribute("searchCache") List<SearchResult> searchCache,
-                                @ModelAttribute("inputCache") String inputCache,
-                                @ModelAttribute("openaiCache") String openaiCache,
-                                @RequestParam(defaultValue = "false") boolean hackerNews) {
+                              @RequestParam(defaultValue = "1") int page, 
+                              Model model,
+                              @ModelAttribute("searchCache") List<SearchResult> searchCache,
+                              @ModelAttribute("inputCache") String inputCache,
+                              @ModelAttribute("openaiCache") String openaiCache,
+                              @RequestParam(defaultValue = "false") boolean hackerNews) {
 
         if (input == null || input.trim().isEmpty()) {
             return "index";
@@ -109,6 +109,7 @@ public class WebController {
         input = normalizeWords(input.trim());
 
         boolean isNewSearch = !input.equals(inputCache);
+        String currentOpenAI = openaiCache;
 
         try {
             if (isNewSearch) {
@@ -122,22 +123,29 @@ public class WebController {
                     }
                 }
 
+                // Fetch fresh results and OpenAI response
                 List<SearchResult> freshResults = gateway.search(filteredSearch);
-                String freshOpenAI = gateway.getAI(input, freshResults);
+                currentOpenAI = gateway.getAI(input, freshResults);
 
+                // Update the caches
                 searchCache.clear();
                 searchCache.addAll(freshResults);
-                model.addAttribute("inputCache", input);
-                model.addAttribute("openaiCache", freshOpenAI);
+                inputCache = input;
+                openaiCache = currentOpenAI;
+
+                // Update the model with new cache values
+                model.addAttribute("searchCache", searchCache);
+                model.addAttribute("inputCache", inputCache);
+                model.addAttribute("openaiCache", openaiCache);
             }
 
             int totalResults = searchCache.size();
             int totalPages = (int) Math.ceil((double) totalResults / size);
 
             if (totalPages == 0) {
+                model.addAttribute("openai", currentOpenAI);
                 model.addAttribute("message", "No results found for your query.");
                 model.addAttribute("results", new ArrayList<>());
-                model.addAttribute("openai", openaiCache);
                 model.addAttribute("currentPage", 1);
                 model.addAttribute("totalPages", 0);
                 model.addAttribute("input", input);
@@ -150,9 +158,9 @@ public class WebController {
             int start = (page - 1) * size;
             int end = Math.min(start + size, totalResults);
             List<SearchResult> pageResults = searchCache.subList(start, end);
-
+            
+            model.addAttribute("openai", currentOpenAI);
             model.addAttribute("results", pageResults);
-            model.addAttribute("openai", openaiCache);
             model.addAttribute("currentPage", page);
             model.addAttribute("totalPages", totalPages);
             model.addAttribute("totalResults", totalResults);

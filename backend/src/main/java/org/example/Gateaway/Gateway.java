@@ -77,9 +77,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             // Initialize services
             gateway.initialize();
-            List<SearchResult> teste =new ArrayList<>();
-
-            System.out.print(gateway.getAI("Harvard", teste));
 
         } catch (Exception e) {
             System.err.println("Failed to start Gateway: " + e.getMessage());
@@ -600,7 +597,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             e.printStackTrace();
         }
 
-        return "Sem resposta AI";
+        return "No response from AI";
     }
 
     private static String fetchData(String urlString) throws IOException {
