@@ -1,34 +1,37 @@
 <!DOCTYPE html>
-<html lang="pt" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Conexões da URL - Gloogloo</title>
+    <title>Results Connections Gloogloo</title>
     <link th:href="@{/styles.css}" rel="stylesheet">
 </head>
 <body>
 
-<h1>Conexões para a URL: <span th:text="${input}"></span></h1>
+<h2>Results for: <span th:text="${input}"></span></h2>
 
-<div th:if="${error}">
-    <p th:text="${error}" style="color: red;"></p>
+<!-- Display error message if exists -->
+<div th:if="${error}" style="color: red; font-weight: bold;">
+    <p th:text="${error}"></p>
 </div>
 
+<!-- Display the connection results -->
 <div th:if="${urls}">
     <ul>
         <li th:each="url : ${urls}">
-            <a th:href="${url}" th:text="${url}" target="_blank"></a>
+            <a th:href="@{${url}}" th:text="${url}"></a>
         </li>
     </ul>
 </div>
 
 <!-- Pagination -->
-<div th:if="${totalPages > 1}">
-    <span th:text="'Página ' + ${currentPage} + ' de ' + ${totalPages}"></span>
+<div>
+    <span th:text="'Page ' + ${currentPage} + ' / ' + ${totalPages}"></span>
     <div>
-        <a th:href="@{/url-connections(input=${input}, page=1)}">Primeira</a>
-        <a th:href="@{/url-connections(input=${input}, page=${prevPage})}">Anterior</a>
-        <a th:href="@{/url-connections(input=${input}, page=${nextPage})}">Próxima</a>
-        <a th:href="@{/url-connections(input=${input}, page=${totalPages})}">Última</a>
+        <!-- Adjust pagination links to point to url-connections -->
+        <a th:href="@{/url-connections(input=${input}, page=1)}">First</a>
+        <a th:href="@{/url-connections(input=${input}, page=${prevPage})}">Previous</a>
+        <a th:href="@{/url-connections(input=${input}, page=${nextPage})}">Next</a>
+        <a th:href="@{/url-connections(input=${input}, page=${totalPages})}">Last</a>
     </div>
 </div>
 

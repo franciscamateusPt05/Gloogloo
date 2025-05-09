@@ -11,10 +11,14 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.SessionAttributes;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import java.text.Normalizer;
 
@@ -23,7 +27,23 @@ import org.example.common.SystemStatistics;
 import org.example.common.SearchResult;
 
 @Controller
+@SessionAttributes({"searchCache", "inputCache", "openaiCache"})
 public class WebController {
+
+        @ModelAttribute("searchCache")
+    public List<SearchResult> searchCache() {
+        return new ArrayList<>();
+    }
+
+    @ModelAttribute("inputCache")
+    public String inputCache() {
+        return "";
+    }
+
+    @ModelAttribute("openaiCache")
+    public String openaiCache() {
+        return "";
+    }
 
     @Autowired
     private RmiClientService rmiClientService; 
@@ -46,18 +66,16 @@ public class WebController {
     }
 
     @PostMapping("/insert-url")
-    public String insertUrl(@RequestParam String url,
-                            @RequestParam(defaultValue = "false") boolean prioritize,
-                            Model model) {
+    @ResponseBody
+    public ResponseEntity<String> insertUrl(@RequestParam String url,
+                                            @RequestParam(defaultValue = "false") boolean prioritize) {
         try {
             if (url == null || url.trim().isEmpty()) {
-                model.addAttribute("error", "URL cannot be empty.");
-                return "error";
+                return ResponseEntity.badRequest().body("URL cannot be empty.");
             }
 
             if (!isValidURL(url)) {
-                model.addAttribute("error", "Invalid URL format.");
-                return "error";
+                return ResponseEntity.badRequest().body("Invalid URL format.");
             }
 
             if (prioritize) {
@@ -66,70 +84,90 @@ public class WebController {
                 gateway.insertURL(url);
             }
 
-            model.addAttribute("success", "URL successfully added to queue" + (prioritize ? " (prioritized)." : "."));
+            return ResponseEntity.ok("URL successfully added to queue" + (prioritize ? " (prioritized).": "."));
         } catch (RemoteException e) {
-            model.addAttribute("error", "Failed to insert URL: " + e.getMessage());
-            return "error";
+            return ResponseEntity.status(500).body("Failed to insert URL: " + e.getMessage());
         }
-
-        return "result-url";
     }
+
 
 
     @GetMapping("/index")
     public String showIndexPage(@RequestParam(value = "input", required = false) String input,
-                                @RequestParam(defaultValue = "1") int page, Model model) {
-        if (input != null && !input.trim().isEmpty()) {
-            int size = 10;
+                                @RequestParam(defaultValue = "1") int page,
+                                Model model,
+                                @ModelAttribute("searchCache") List<SearchResult> searchCache,
+                                @ModelAttribute("inputCache") String inputCache,
+                                @ModelAttribute("openaiCache") String openaiCache,
+                                @RequestParam(defaultValue = "false") boolean hackerNews) {
 
-            try {
-                String input_n = input.trim();
-                input = normalizeWords(input);
-                List<String> stopwords = gateway.getStopwords();
-                String[] search = input.trim().split("\\s+");
-                ArrayList<String> filteredSearch = new ArrayList<>();
-
-                for (String word : search) {
-                    if (!stopwords.contains(word.trim())) {
-                        filteredSearch.add(word.trim());
-                    }
-                }
-                List<SearchResult> results = gateway.search(filteredSearch);
-                String openai= gateway.getAI(input_n,results);
-
-                String content = String.join(" ",input_n);
-                gateway.hacker(content);
-
-                int totalResults = results.size();
-                int totalPages = (int) Math.ceil((double) totalResults / size);
-
-                if (page < 1) page = 1;
-                if (page > totalPages) page = totalPages;
-
-                int start = (page - 1) * size;
-                int end = Math.min(start + size, totalResults);
-
-                List<SearchResult> pageResults = results.subList(start, end);
-
-                model.addAttribute("openai", openai);
-                model.addAttribute("results", pageResults);
-                model.addAttribute("currentPage", page);
-                model.addAttribute("totalPages", totalPages);
-                model.addAttribute("totalResults", totalResults);
-                model.addAttribute("input", input);
-                model.addAttribute("prevPage", page > 1 ? page - 1 : 1);
-                model.addAttribute("nextPage", page < totalPages ? page + 1 : totalPages);
-
-            } catch (RemoteException e) {
-                model.addAttribute("error", "Search failed: " + e.getMessage());
-                return "error";
-            }
-
-            return "result-search";
+        if (input == null || input.trim().isEmpty()) {
+            return "index";
         }
 
-        return "index";
+        int size = 10;
+        input = normalizeWords(input.trim());
+
+        boolean isNewSearch = !input.equals(inputCache);
+
+        try {
+            if (isNewSearch) {
+                List<String> stopwords = gateway.getStopwords();
+                String[] searchWords = input.split("\\s+");
+                ArrayList<String> filteredSearch = new ArrayList<>();
+
+                for (String word : searchWords) {
+                    if (!stopwords.contains(word)) {
+                        filteredSearch.add(word);
+                    }
+                }
+
+                List<SearchResult> freshResults = gateway.search(filteredSearch);
+                String freshOpenAI = gateway.getAI(input, freshResults);
+
+                searchCache.clear();
+                searchCache.addAll(freshResults);
+                model.addAttribute("inputCache", input);
+                model.addAttribute("openaiCache", freshOpenAI);
+            }
+
+            int totalResults = searchCache.size();
+            int totalPages = (int) Math.ceil((double) totalResults / size);
+
+            if (totalPages == 0) {
+                model.addAttribute("message", "No results found for your query.");
+                model.addAttribute("results", new ArrayList<>());
+                model.addAttribute("openai", openaiCache);
+                model.addAttribute("currentPage", 1);
+                model.addAttribute("totalPages", 0);
+                model.addAttribute("input", input);
+                return "result-search";
+            }
+
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+
+            int start = (page - 1) * size;
+            int end = Math.min(start + size, totalResults);
+            List<SearchResult> pageResults = searchCache.subList(start, end);
+
+            model.addAttribute("results", pageResults);
+            model.addAttribute("openai", openaiCache);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("totalResults", totalResults);
+            model.addAttribute("input", input);
+            model.addAttribute("prevPage", page > 1 ? page - 1 : 1);
+            model.addAttribute("nextPage", page < totalPages ? page + 1 : totalPages);
+
+            return "result-search";
+
+        } catch (RemoteException e) {
+            model.addAttribute("error", "Search failed: " + e.getMessage());
+            return "error";
+        }
     }
+
 
 
     @GetMapping("/url-connections")

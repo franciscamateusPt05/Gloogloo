@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Insert URL</title>
+    <link th:href="@{/styles.css}" rel="stylesheet">
+    <style>
+        .popup {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #34A853;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            font-size: 14px;
+            transition: opacity 0.3s ease;
+        }
+        .popup.error {
+            background-color: #EA4335;
+        }
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <a href="/index">Search</a>
+    <a href="/url-connections">Check Url Connections</a>
+    <a href="/statistics">Statistics</a>
+</div>
+
+<div class="logo">
+    <span class="blue">I</span><span class="red">n</span><span class="yellow">s</span><span class="blue">e</span><span class="green">r</span><span class="red">t</span>
+</div>
+
+<form id="urlForm">
+    <input type="text" class="search-box" name="url" id="urlInput" placeholder="Enter URL" required>
+    <div class="buttons">
+        <button type="submit" class="button">Insert URL</button>
+        <label style="display: flex; align-items: center; font-size: 14px;">
+            <input type="checkbox" id="prioritize" name="prioritize" style="margin-left: 10px;">
+            Prioritize
+        </label>
+    </div>
+</form>
+
+<div id="popup" class="popup"></div>
+
+<script>
+    document.getElementById("urlForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const url = document.getElementById("urlInput").value;
+        const prioritize = document.getElementById("prioritize").checked;
+        const popup = document.getElementById("popup");
+
+        fetch("/insert-url", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+                url: url,
+                prioritize: prioritize
+            })
+        })
+        .then(async (response) => {
+            const message = await response.text();
+            popup.textContent = message;
+            popup.className = "popup" + (!response.ok ? " error" : "");
+            popup.style.display = "block";
+            setTimeout(() => popup.style.display = "none", 3000);
+        })
+        .catch(() => {
+            popup.textContent = "Something went wrong.";
+            popup.className = "popup error";
+            popup.style.display = "block";
+            setTimeout(() => popup.style.display = "none", 3000);
+        });
+    });
+</script>
+
+</body>
+</html>

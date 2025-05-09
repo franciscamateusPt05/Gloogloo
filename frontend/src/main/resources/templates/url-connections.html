@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gloogloo</title>
+    <title>Gloogloo - URL Connections</title>
     <link th:href="@{/styles.css}" rel="stylesheet">
 </head>
 <body>
-<audio id="clickSound" th:src="@{/Gloogloo.mp3}" preload="auto"></audio>
 
 <div class="nav">
-    <a href="/insert-url">Insert Urls</a>
-    <a href="/url-connections">Check Url Connections</a>
+    <a href="/index">Search</a>
+    <a href="/insert-url">Check Url Connections</a>
     <a href="/statistics">Statistics</a>
 </div>
 
@@ -26,21 +25,23 @@
     <span class="blue">o</span>
 </div>
 
-<form th:action="@{/index}" method="get">
-    <input type="text" class="search-box" name="input" placeholder="Explore the Web with Gloogloo" required>
-
-    <!-- Checkbox for Hacker News -->
-    <div class="checkbox-container">            
-        <label>
-            <input type="checkbox" name="hackerNews" value="true" th:checked="${hackerNews}" />
-            Insert Urls from Hacker News Top Stories
-        </label>
-    </div>
-
+<!-- URL Input Form -->
+<form th:action="@{/url-connections}" method="get">
+    <input type="text" class="search-box" name="input" placeholder="Enter URL" required>
     <div class="buttons">
-        <button class="button" type="submit">Gloogloo Search</button>
+        <button class="button" type="submit">Check URL Connections</button>
     </div>
 </form>
+
+<!-- Display Error Pop-Up using JavaScript -->
+<script>
+    // Check for any error message in the URL
+    const errorMessage = /*[[${error}]]*/'';
+    
+    if (errorMessage) {
+        alert(errorMessage); // Show an alert with the error message
+    }
+</script>
 
 <script th:src="@{/script.js}"></script>
 </body>

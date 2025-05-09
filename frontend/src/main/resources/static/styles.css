@@ -7,20 +7,24 @@ body {
     align-items: center;
     min-height: 100vh;
     background-color: #f8f9fa;
+    border: 0;
+    outline: 0;
 }
 
 .nav {
+    position: absolute;
+    top: 1rem;
+    right: 15px;
     display: flex;
-    justify-content: flex-end;
-    width: 100%;
-    padding: 20px;
+    gap: 1rem;
+    font-size: 1rem;
 }
 
 .nav a {
     margin-left: 15px;
     text-decoration: none;
     color: #202124;
-    font-size: 13px;
+    font-size: 15px;
 }
 
 .nav a:hover {
@@ -28,7 +32,7 @@ body {
 }
 
 .logo {
-    margin-top: 100px;
+    margin-top: 160px;
     margin-bottom: 30px;
     font-size: 80px;
     font-weight: bold;
@@ -58,12 +62,14 @@ body {
     border: 1px solid #dfe1e5;
     padding: 0 20px;
     font-size: 16px;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
     outline: none;
+    text-align: center;
 }
 
-.search-box:hover {
-    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+.search-box:focus {
+    border-color: #0e1c33;
+    box-shadow: 0 1px 6px rgba(66, 133, 244, 0.28);
 }
 
 .buttons {
@@ -75,7 +81,7 @@ body {
 
 .button {
     background-color: #f8f9fa;
-    border: 1px solid #f8f9fa;
+    border: 1px solid #b9bdc6;
     border-radius: 4px;
     color: #3c4043;
     font-size: 14px;
@@ -88,34 +94,6 @@ body {
     box-shadow: 0 1px 1px rgba(0,0,0,0.1);
 }
 
-.footer {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    background-color: #f2f2f2;
-    padding: 15px 0;
-    border-top: 1px solid #dadce0;
-}
-
-.footer-links {
-    display: flex;
-    justify-content: space-between;
-    padding: 0 20px;
-    flex-wrap: wrap;
-}
-
-.footer-links a {
-    text-decoration: none;
-    color: #70757a;
-    font-size: 14px;
-    margin: 5px 10px;
-}
-
-.footer-links a:hover {
-    text-decoration: underline;
-}
-
-/* Estilos para a página de resultados */
 .logo-small {
     font-size: 24px;
     font-weight: bold;
@@ -185,7 +163,6 @@ body {
     margin: 0;
 }
 
-/* Paginação */
 .pagination {
     display: flex;
     justify-content: center;
@@ -210,7 +187,6 @@ body {
     color: white;
 }
 
-/* OpenAI Comments */
 .ai-comments {
     margin: 40px 0;
     padding: 20px;
@@ -232,6 +208,27 @@ body {
     margin-top: 10px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
+
+.checkbox-container {
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    text-align: center;
+    margin: 20px auto;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 2px;
+    max-width: 350px;
+}
+
+.checkbox-container label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 8px 0;
+    cursor: pointer;
+}
+
 
 @media (max-width: 768px) {
     .nav {

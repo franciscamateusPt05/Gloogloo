@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const inputValue = searchInput.value.trim();
         if (!inputValue) {
-            alert("Por favor, insira um termo de pesquisa.");
+            alert("Please, insert a search terms.");
             return;
         }
 
@@ -18,9 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
             sound.currentTime = 0;
             sound.play().catch(function(error) {
                 console.error("Erro ao tocar som:", error);
-                if (error.name === 'NotAllowedError') {
-                    alert("Permita sons para uma melhor experiência.");
-                }
             });
 
             sound.addEventListener('ended', function redirectAfterSound() {

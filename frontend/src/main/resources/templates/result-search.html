@@ -1,36 +1,47 @@
 <!DOCTYPE html>
-<html lang="pt" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Resultado da Busca - Gloogloo</title>
+    <title>Results Search Gloogloo</title>
     <link th:href="@{/styles.css}" rel="stylesheet">
 </head>
 <body>
 
-<h1>Resultados para: <span th:text="${input}"></span></h1>
+<h2>Results for: <span th:text="${input}"></span></h2>
 
 <div th:if="${error}">
     <p th:text="${error}"></p>
 </div>
 
-<div th:if="${openai}" th:text="${openai}"></div>
-
-<div th:if="${results}">
-    <ul>
-        <li th:each="result : ${results}">
-            <a th:href="@{${result.url}}" th:text="${result.title}"></a>
-        </li>
-    </ul>
+<!-- Message for no results found -->
+<div th:if="${message}">
+    <p th:text="${message}" style="color: red; font-weight: bold;"></p>
 </div>
 
-<!-- Pagination -->
-<div>
-    <span th:text="'Página ' + ${currentPage} + ' de ' + ${totalPages}"></span>
+<!-- OpenAI suggestion or comment -->
+<div th:if="${openai}" th:text="${openai}"></div>
+
+<!-- Only show results list if not empty -->
+<div th:if="${results}">
+    <div th:each="result : ${results}" style="margin-bottom: 1.5em;">
+        <div>
+            <a th:href="@{${result.url}}" th:text="${result.title}" target="_blank" style="font-weight: bold;"></a>
+        </div>
+        <div th:text="${result.snippet}" style="margin-top: 0.3em;"></div>
+        <div>
+            <a th:href="@{${result.url}}" th:text="${result.url}" style="color: gray; font-size: 0.9em;" target="_blank"></a>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination (only show if there are results) -->
+<div th:if="${totalPages > 0}">
+    <span th:text="'Page ' + ${currentPage} + ' / ' + ${totalPages}"></span>
     <div>
-        <a th:href="@{/index(input=${input}, page=1)}">Primeira</a>
-        <a th:href="@{/index(input=${input}, page=${prevPage})}">Anterior</a>
-        <a th:href="@{/index(input=${input}, page=${nextPage})}">Próxima</a>
-        <a th:href="@{/index(input=${input}, page=${totalPages})}">Última</a>
+        <a th:href="@{/index(input=${input}, page=1)}">First</a>
+        <a th:href="@{/index(input=${input}, page=${prevPage})}">Previous</a>
+        <a th:href="@{/index(input=${input}, page=${nextPage})}">Next</a>
+        <a th:href="@{/index(input=${input}, page=${totalPages})}">Last</a>
     </div>
 </div>
 
