@@ -125,10 +125,10 @@
 <div th:if="${totalPages > 0}" class="pagination-container">
     <span th:text="'Page ' + ${currentPage} + ' / ' + ${totalPages}"></span>
     <div>
-        <a th:href="@{/index(input=${input}, page=1)}">First</a>
-        <a th:href="@{/index(input=${input}, page=${prevPage})}">Previous</a>
-        <a th:href="@{/index(input=${input}, page=${nextPage})}">Next</a>
-        <a th:href="@{/index(input=${input}, page=${totalPages})}">Last</a>
+        <a th:href="@{'/index'(input=${input}, page=1, ResultOpenAI=${ResultOpenAI == 'on' ? 'on' : 'off'})}">First</a>
+        <a th:href="@{'/index'(input=${input}, page=${prevPage}, ResultOpenAI=${ResultOpenAI == 'on' ? 'on' : 'off'})}">Previous</a>
+        <a th:href="@{'/index'(input=${input}, page=${nextPage}, ResultOpenAI=${ResultOpenAI == 'on' ? 'on' : 'off'})}">Next</a>
+        <a th:href="@{'/index'(input=${input}, page=${totalPages}, ResultOpenAI=${ResultOpenAI == 'on' ? 'on' : 'off'})}">Last</a>
     </div>
 </div>
 

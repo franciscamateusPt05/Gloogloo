@@ -67,7 +67,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             int port = Integer.parseInt(prop.getProperty("rmi.port", "1099"));
             String serviceName = prop.getProperty("rmi.service_name", "GatewayService");
 
-            API_KEY = "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";
+            API_KEY = "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";
 
             Gateway gateway = new Gateway();
 

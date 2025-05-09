@@ -27,7 +27,7 @@ import org.example.common.SystemStatistics;
 import org.example.common.SearchResult;
 
 @Controller
-@SessionAttributes({"searchCache", "inputCache", "openaiCache"})
+@SessionAttributes({"searchCache", "inputCache", "openaiCache", "ResultOpenAICache"})
 public class WebController {
 
     @ModelAttribute("searchCache")
@@ -43,6 +43,11 @@ public class WebController {
     @ModelAttribute("openaiCache")
     public String openaiCache() {
         return "";
+    }
+
+    @ModelAttribute("ResultOpenAICache")
+    public String ResultOpenAICache() {
+        return "off";
     }
 
     @Autowired
@@ -100,94 +105,108 @@ public class WebController {
                                 Model model,
                                 @ModelAttribute("searchCache") List<SearchResult> searchCache,
                                 @ModelAttribute("inputCache") String inputCache,
-                                @ModelAttribute("openaiCache") String openaiCache) {
-        
+                                @ModelAttribute("openaiCache") String openaiCache,
+                                @ModelAttribute("ResultOpenAICache") String ResultOpenAICache) {
+    
         boolean isHackerNews = "on".equals(hackerNews);
         boolean isResultOpenAI = "on".equals(ResultOpenAI);
-
+    
         if (input == null || input.trim().isEmpty()) {
             return "index";
         }
-
+    
         final int pageSize = 10;
         input = normalizeWords(input.trim());
         boolean isNewSearch = !input.equals(inputCache);
-
-        System.out.println("DEBUG: hackerNews = "+ hackerNews+ ", ResultOpenAI = " + ResultOpenAI);
+    
+        System.out.println("DEBUG: hackerNews = " + hackerNews + ", ResultOpenAI = " + ResultOpenAI);
         System.out.println("------------------");
-
+    
         String currentOpenAI = "";
-
+    
         try {
+            // Only perform a new search if input changed or HackerNews is triggered
+            if (isNewSearch) {
+                inputCache = input;
+                model.addAttribute("inputCache", inputCache);
+            }
 
-            // Perform new search if input changed or OpenAI checkbox is checked
-            if (isNewSearch || isResultOpenAI || isHackerNews) {
+            if (isNewSearch || isHackerNews) {
                 List<String> stopwords = gateway.getStopwords();
                 ArrayList<String> filteredSearch = new ArrayList<>();
-
+    
                 for (String word : input.split("\\s+")) {
                     if (!stopwords.contains(word)) {
                         filteredSearch.add(word);
                     }
                 }
-
+    
                 List<SearchResult> freshResults = gateway.search(filteredSearch);
-
-                if(isHackerNews){
-                    String content = String.join(" ",input);
+    
+                if (isHackerNews) {
+                    String content = String.join(" ", input);
                     gateway.hacker(content);
                 }
-
+    
+                // Cache search results and input
                 searchCache.clear();
                 searchCache.addAll(freshResults);
                 inputCache = input;
                 model.addAttribute("searchCache", searchCache);
                 model.addAttribute("inputCache", inputCache);
-
+    
+                // Call OpenAI if checkbox is on
                 if (isResultOpenAI) {
                     currentOpenAI = gateway.getAI(input, freshResults);
                     openaiCache = currentOpenAI;
                     model.addAttribute("openaiCache", openaiCache);
-                    model.addAttribute("openai", openaiCache);
                 } else {
                     openaiCache = "";
                     model.addAttribute("openaiCache", openaiCache);
-                    model.addAttribute("openai", openaiCache);
                 }
+            } else if (isResultOpenAI && (openaiCache == null || openaiCache.isEmpty())) {
+                // Input hasn't changed, but we still need OpenAI result and it's not cached
+                currentOpenAI = gateway.getAI(input, searchCache);
+                openaiCache = currentOpenAI;
+                model.addAttribute("openaiCache", openaiCache);
             }
-
-            // Always get the current OpenAI output from the cache (if any)
+    
+            // Always read cached OpenAI result
             currentOpenAI = openaiCache;
-
+    
             int totalResults = searchCache.size();
             int totalPages = (int) Math.ceil((double) totalResults / pageSize);
-
+    
             if (totalPages == 0) {
                 model.addAttribute("message", "No results found for your query.");
                 model.addAttribute("results", new ArrayList<>());
-                if(isResultOpenAI) model.addAttribute("openai", currentOpenAI);
+                if (isResultOpenAI) model.addAttribute("openai", openaiCache);
                 model.addAttribute("input", input);
                 model.addAttribute("currentPage", 1);
                 model.addAttribute("totalPages", 0);
                 return "result-search";
             }
-
-            // Pagination boundaries
+    
+            // Pagination
             page = Math.max(1, Math.min(page, totalPages));
             int start = (page - 1) * pageSize;
             int end = Math.min(start + pageSize, totalResults);
             List<SearchResult> pageResults = searchCache.subList(start, end);
-
+    
+            // Add attributes for rendering
             model.addAttribute("results", pageResults);
+            if (isResultOpenAI) model.addAttribute("openai", openaiCache);
             model.addAttribute("input", input);
+            model.addAttribute("ResultOpenAI", ResultOpenAI);
+            model.addAttribute("ResultOpenAICache", ResultOpenAI);
             model.addAttribute("currentPage", page);
             model.addAttribute("totalPages", totalPages);
             model.addAttribute("totalResults", totalResults);
             model.addAttribute("prevPage", page > 1 ? page - 1 : 1);
             model.addAttribute("nextPage", page < totalPages ? page + 1 : totalPages);
-
+    
             return "result-search";
-
+    
         } catch (RemoteException e) {
             model.addAttribute("error", "Search failed: " + e.getMessage());
             return "error";

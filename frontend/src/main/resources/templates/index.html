@@ -49,24 +49,46 @@
 <script>document.addEventListener('DOMContentLoaded', function () {
     const searchButton = document.querySelector('.button:first-child');
     const searchInput = document.querySelector('input[name="input"]');
-    const form = searchButton.closest('form');
+    const hackerNewsCheckbox = document.querySelector('input[name="hackerNews"]');
+    const openAICheckbox = document.querySelector('input[name="ResultOpenAI"]');
+    const sound = document.getElementById('clickSound');
 
-    console.log("Script loaded");
+    if (sound) sound.volume = 0.5;
 
     searchButton.addEventListener('click', function (event) {
-        const inputValue = searchInput.value.trim();
+        event.preventDefault(); // always prevent default
 
-        // If the input value is empty, show an alert and prevent form submission
+        const inputValue = searchInput.value.trim();
         if (!inputValue) {
             alert("Please, insert a search term.");
-            event.preventDefault(); // prevent submission for validation
             return;
         }
 
-        // Proceed with form submission if input is valid
-        form.submit();
+        const hackerNews = hackerNewsCheckbox.checked ? "on" : "off";
+        const resultOpenAI = openAICheckbox.checked ? "on" : "off";
+
+        const redirectUrl = `/index?input=${encodeURIComponent(inputValue)}&page=1&hackerNews=${hackerNews}&ResultOpenAI=${resultOpenAI}`;
+
+        if (sound) {
+            try {
+                sound.currentTime = 0;
+                sound.play().catch(() => {
+                    window.location.href = redirectUrl;
+                });
+
+                sound.addEventListener('ended', function onEnd() {
+                    window.location.href = redirectUrl;
+                    sound.removeEventListener('ended', onEnd);
+                });
+            } catch (err) {
+                window.location.href = redirectUrl;
+            }
+        } else {
+            window.location.href = redirectUrl;
+        }
     });
-});</script>
+});
+</script>
 
 </body>
 </html>
