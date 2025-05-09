@@ -84,7 +84,7 @@ public class Downloader {
     }
 
     private synchronized void processContent(String url) throws RemoteException {
-        this.barrels=this.gateaway.getBarrels();
+        this.barrels = this.gateaway.getBarrels();
         Random random = new Random();
         List<String> keys = new ArrayList<>(this.barrels.keySet());
         if (keys.isEmpty()) {
@@ -108,68 +108,62 @@ public class Downloader {
 
                 List<Thread> threads = new ArrayList<>();
                 List<Boolean> results = Collections.synchronizedList(new ArrayList<>());
-                System.out.print(gateaway.isFlag());
-                if (!gateaway.isFlag()) {
-                    for (Map.Entry<String, IBarrel> entry : this.barrels.entrySet()) {
-                        String chave = entry.getKey();
-                        IBarrel barrel = entry.getValue();
 
-                        Thread thread = new Thread(() -> {
+                for (Map.Entry<String, IBarrel> entry : this.barrels.entrySet()) {
+                    String chave = entry.getKey();
+                    IBarrel barrel = entry.getValue();
+
+                    Thread thread = new Thread(() -> {
+                        try {
+                            barrel.addToIndex(palavras, url, listaLinks, title, citacao);
+                            synchronized (results) {
+                                results.add(true);
+                            }
+                        } catch (UnmarshalException e) {
+                            logger.log(Level.WARNING, "RMI connection problem with barrel " + chave, e);
+                            synchronized (results) {
+                                results.add(false);
+                            }
                             try {
-                                barrel.addToIndex(palavras, url, listaLinks, title, citacao);
-                                synchronized (results) {
-                                    results.add(true);
-                                }
-                            } catch (UnmarshalException e) {
-                                logger.log(Level.WARNING, "RMI connection problem with barrel " + chave, e);
-                                synchronized (results) {
-                                    results.add(false);
-                                }
+                                this.gateaway.unregisterBarrel(chave);
+                                System.out.println("Foi removido a URL: " + chave);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        } catch (Exception e) {
+                            synchronized (results) {
+                                results.add(false);
+                            }
+                            // Só faz unregister se NÃO for erro de "database is locked"
+                            if (e.getMessage() == null || !e.getMessage().toLowerCase().contains("database is locked")) {
                                 try {
                                     this.gateaway.unregisterBarrel(chave);
                                     System.out.println("Foi removido a URL: " + chave);
                                 } catch (Exception ex) {
                                     ex.printStackTrace();
                                 }
-                            } catch (Exception e) {
-                                synchronized (results) {
-                                    results.add(false);
-                                }
-                                // Só faz unregister se NÃO for erro de "database is locked"
-                                if (e.getMessage() == null || !e.getMessage().toLowerCase().contains("database is locked")) {
-                                    try {
-                                        this.gateaway.unregisterBarrel(chave);
-                                        System.out.println("Foi removido a URL: " + chave);
-                                    } catch (Exception ex) {
-                                        ex.printStackTrace();
-                                    }
-                                } else {
-                                    System.out.println("Erro de lock no barrel, a ligação será mantida: " + chave);
-                                }
-                            }
-                        });
-                        threads.add(thread);
-                        thread.start();
-                    }
-
-                    for (Thread thread : threads) {
-                        thread.join();
-                    }
-
-                    if (!results.isEmpty() && results.stream().anyMatch(Boolean::booleanValue)) {
-                        for (String link : listaLinks) {
-                            String keyAleatoria = keys.get(random.nextInt(keys.size()));
-                            IBarrel barrelAleatorio = this.barrels.get(keyAleatoria);
-                            if (!barrelAleatorio.containsUrl(link)) {
-                                this.queue.addURL(link);
+                            } else {
+                                System.out.println("Erro de lock no barrel, a ligação será mantida: " + chave);
                             }
                         }
-                    } else {
-                        this.queue.addURL(url);
-                    }
+                    });
+                    threads.add(thread);
+                    thread.start();
                 }
-                else {
-                    System.out.println("Sincronizar");
+
+                for (Thread thread : threads) {
+                    thread.join();
+                }
+
+                if (!results.isEmpty() && results.stream().anyMatch(Boolean::booleanValue)) {
+                    for (String link : listaLinks) {
+                        String keyAleatoria = keys.get(random.nextInt(keys.size()));
+                        IBarrel barrelAleatorio = this.barrels.get(keyAleatoria);
+                        if (!barrelAleatorio.containsUrl(link)) {
+                            this.queue.addURL(link);
+                        }
+                    }
+                } else {
                     this.queue.addURL(url);
                 }
             } catch (Exception e) {

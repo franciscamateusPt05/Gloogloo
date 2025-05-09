@@ -1,7 +1,11 @@
 package org.example.Barrel;
 
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.*;
@@ -10,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,9 +28,10 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     public String rmiUrl;
     public String dbUrl;
     public String ficheiro;
+    ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
 
-    public BarrelImpl(String barrelName, String ficheiro) throws RemoteException {
+    public BarrelImpl(String barrelName) throws RemoteException {
         super();
 
         Properties properties = new Properties();
@@ -41,7 +47,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         // Escolher a configuração do Barrel com base no nome (barrel1 ou barrel2)
         rmiUrl = properties.getProperty(barrelName + ".rmi.url");
         dbUrl = properties.getProperty(barrelName + ".db.url");
-        this.ficheiro = ficheiro;
+        this.ficheiro = properties.getProperty(barrelName + ".db.file");
 
         // Log de depuração
         logger.info("Conectando ao Barrel: " + barrelName);
@@ -53,7 +59,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     // Método para adicionar uma palavra ao índice associada a uma URL
     @Override
     public synchronized void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
-
+            lock.writeLock().lock();
             try {
                 WriteData(words, url, toUrls, titulo, citaçao);
             } catch (SQLException e) {
@@ -66,6 +72,8 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                     rollbackEx.printStackTrace();
                 }
                 throw new RemoteException("Erro ao adicionar informações ao índice", e);
+            }finally {
+                lock.writeLock().unlock();
             }
 
     }
@@ -400,4 +408,31 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
+    @Override
+    public byte[] getFile() throws RemoteException {
+        try {
+            Path path = Paths.get(getFicheiro()); // substitui com o caminho real
+            return Files.readAllBytes(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
+
+    @Override
+    public void sync(String destino) throws RemoteException {
+        lock.writeLock().lock();  // Lock de escrita porque vais gravar ficheiro
+        try (FileOutputStream fos = new FileOutputStream(destino)) {
+            fos.write(getFile());
+            System.out.println("Base de dados recebida e gravada em: " + destino);
+        } catch (IOException e) {
+            throw new RemoteException("Erro ao gravar o ficheiro de base de dados", e);
+        } finally {
+            lock.writeLock().unlock();  // Liberta o lock no final, mesmo com erro
+        }
+    }
+
+
+}
+
+

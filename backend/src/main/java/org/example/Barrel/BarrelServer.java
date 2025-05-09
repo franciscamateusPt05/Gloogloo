@@ -39,7 +39,7 @@ public class BarrelServer {
             String barrel1ServiceName = properties.getProperty("barrel1.rmi.service_name");
             String barrel1RmiUrl = String.format("rmi://%s:%s/%s", barrel1Host, barrel1Port, barrel1ServiceName);
 
-            BarrelImpl barrelService1 = new BarrelImpl("barrel1","backend/Barrels/Barrel1/barrel1");
+            BarrelImpl barrelService1 = new BarrelImpl("barrel1");
             Naming.rebind(barrel1RmiUrl, barrelService1);
 
             Properties prop = loadProperties(GATEWAY_CONFIG_FILE);

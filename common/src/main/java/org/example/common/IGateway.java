@@ -63,7 +63,6 @@ public interface IGateway extends Remote {
     Map<String, IBarrel> getBarrels() throws RemoteException;
     List<String> getStopwords() throws RemoteException;
 
-    boolean isFlag() throws RemoteException;
 
     void hacker(String title) throws RemoteException;
 

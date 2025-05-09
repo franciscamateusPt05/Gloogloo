@@ -50,6 +50,8 @@ public interface IBarrel extends Remote {
 
     void connect() throws RemoteException;
 
+    byte[] getFile() throws RemoteException;
 
+    void sync(String destino) throws RemoteException;
 }
 

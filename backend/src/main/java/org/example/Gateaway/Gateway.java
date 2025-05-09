@@ -44,7 +44,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
     private Map<String, IBarrel> activeBarrels = new HashMap<>();
     private Map<String, BarrelStats> responseTimes = new HashMap<>();
 
-    private final AtomicBoolean isSynchronizing = new AtomicBoolean(false);
 
     private static final String TOP_STORIES_URL = "https://hacker-news.firebaseio.com/v0/topstories.json";
     private static final String ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/";
@@ -446,9 +445,8 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                     sinc = sincc;
                     break; // Remove este break se quiser processar todos os barrels
                 }
-                isSynchronizing.set(true);
-                sincronizar(sinc.getFicheiro(), barrel.getFicheiro());
-                isSynchronizing.set(false);
+                sinc.sync(barrel.getFicheiro());
+
             }
             barrel.connect();
 
@@ -471,31 +469,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-    public static void sincronizar(String caminhoOrigem, String caminhoDestino) {
-        File bancoOrigem = new File(caminhoOrigem);
-        File bancoDestino = new File(caminhoDestino);
 
-        try {
-            // Verifica se o banco de dados de destino existe e tenta removê-lo
-            if (bancoDestino.exists()) {
-                if (!bancoDestino.delete()) {
-                    System.err.println("Não foi possível remover o banco de dados de destino existente.");
-                    return;
-                }
-            }
-
-            // Copia o banco de dados de origem para o destino, substituindo-o se necessário
-            Files.copy(bancoOrigem.toPath(), bancoDestino.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-            Thread.sleep(5000);
-            System.out.println("Banco de dados copiado com sucesso!");
-        } catch (IOException e) {
-            System.err.println("Erro ao copiar o banco de dados: " + e.getMessage());
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            System.out.println("Erro ao copiar o banco de dados: " + e.getMessage());
-        }
-    }
 
     public Map<String, IBarrel> getBarrels() throws RemoteException{
         return new HashMap<>(this.activeBarrels);
@@ -508,9 +482,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         throw new RemoteException("QueueServer not connected.");
     }
 
-    public boolean isFlag() throws RemoteException {
-        return isSynchronizing.get();
-    }
 
     public void hacker(String title) throws RemoteException {
         try {
