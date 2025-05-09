@@ -67,7 +67,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             int port = Integer.parseInt(prop.getProperty("rmi.port", "1099"));
             String serviceName = prop.getProperty("rmi.service_name", "GatewayService");
 
-            API_KEY = "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";
+            API_KEY = "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";
 
             Gateway gateway = new Gateway();
 
@@ -77,9 +77,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
             // Initialize services
             gateway.initialize();
-            List<SearchResult> teste =new ArrayList<>();
 
-            System.out.print(gateway.getAI("Harvard", teste));
 
         } catch (Exception e) {
             System.err.println("Failed to start Gateway: " + e.getMessage());
@@ -562,7 +560,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         messages.add(message);
 
         JsonObject payload = new JsonObject();
-        payload.addProperty("model", "qwen/qwen3-0.6b-04-28:free");
+        payload.addProperty("model", "microsoft/phi-4-reasoning-plus:free");
         payload.add("messages", messages);
 
         try {
