@@ -70,10 +70,17 @@ public class WebController {
         return "redirect:/index";
     }
 
+    @GetMapping("/insert-url")
+    public String showInsertUrlPage() {
+        return "insert-url";
+    }
+
     @PostMapping("/insert-url")
     @ResponseBody
     public ResponseEntity<String> insertUrl(@RequestParam String url,
                                             @RequestParam(defaultValue = "false") boolean prioritize) {
+
+        System.out.println("[DEBUG] prioritize:" + prioritize);
         try {
             if (url == null || url.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("URL cannot be empty.");
@@ -213,7 +220,13 @@ public class WebController {
         }
     }
 
+    //@GetMapping("/url-connections")
+    //public String showUrlConnections() {
+    //    return "url-connections";
+    //}
+
     @GetMapping("/url-connections")
+    @ResponseBody
     public String getConnections(@RequestParam String input, @RequestParam(defaultValue = "1") int page, Model model) {
         int size = 10;
 

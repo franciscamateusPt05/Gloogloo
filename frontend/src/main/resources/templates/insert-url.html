@@ -9,7 +9,8 @@
             display: none;
             position: fixed;
             top: 20px;
-            right: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background-color: #34A853;
             color: white;
             padding: 15px 20px;
@@ -22,6 +23,15 @@
         .popup.error {
             background-color: #EA4335;
         }
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .action-buttons button {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -33,7 +43,14 @@
 </div>
 
 <div class="logo">
-    <span class="blue">I</span><span class="red">n</span><span class="yellow">s</span><span class="blue">e</span><span class="green">r</span><span class="red">t</span>
+    <span class="blue">G</span>
+    <span class="red">l</span>
+    <span class="yellow">o</span>
+    <span class="blue">o</span>
+    <span class="green">g</span>
+    <span class="red">l</span>
+    <span class="yellow">o</span>
+    <span class="blue">o</span>
 </div>
 
 <form id="urlForm">
