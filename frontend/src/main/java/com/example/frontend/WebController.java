@@ -178,8 +178,9 @@ public class WebController {
                 model.addAttribute("openaiCache", openaiCache);
             }
     
-            // Always read cached OpenAI result
+
             currentOpenAI = openaiCache;
+            sendStatistics();
     
             int totalResults = searchCache.size();
             int totalPages = (int) Math.ceil((double) totalResults / pageSize);
@@ -215,6 +216,7 @@ public class WebController {
             return "result-search";
     
         } catch (RemoteException e) {
+            sendStatistics();
             model.addAttribute("error", "Search failed: " + e.getMessage());
             return "error";
         }
