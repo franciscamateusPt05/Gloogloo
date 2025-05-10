@@ -258,6 +258,8 @@ public class WebController {
 
             List<String> pageUrls = urls.subList(start, end);
 
+            sendStatistics();
+
             model.addAttribute("urls", pageUrls);
             model.addAttribute("currentPage", page);
             model.addAttribute("totalPages", totalPages);
@@ -268,6 +270,7 @@ public class WebController {
 
             return "result-url-connections";
         } catch (RemoteException e) {
+            sendStatistics();
             model.addAttribute("error", "Search failed: " + e.getMessage());
             return "error";
         }
