@@ -59,6 +59,7 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
             }
             list.addLast(url);
             saveQueueToFile();
+            System.out.println("Adicionando novo link: " + url);
             notifyAll(); // Notifica as threads que estão à espera de um URL
         }
     }
@@ -72,6 +73,7 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
             }
             list.addFirst(url);
             saveQueueToFile();
+            System.out.println("Adicionando novo link: " + url);
             notifyAll(); // Notifica as threads que estão à espera de um URL
         }
     }

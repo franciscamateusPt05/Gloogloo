@@ -11,6 +11,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.text.Normalizer;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.gson.Gson;
@@ -25,6 +26,8 @@ import org.example.Statistics.BarrelStats;
 import org.example.common.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 public class Gateway extends UnicastRemoteObject implements IGateway {
 
@@ -235,7 +238,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
                 updateStatistics(search, responseTime);
 
-                //hacker(String.join(" ",search));
 
                 if (!results.isEmpty()) {
                     selectedBarrel = barrel;
@@ -485,20 +487,68 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     public void hacker(String title) throws RemoteException {
         try {
-            JSONArray topStoryIds = new JSONArray(fetchData(TOP_STORIES_URL));
+            String topStoriesJson = Jsoup.connect(TOP_STORIES_URL)
+                    .ignoreContentType(true)
+                    .execute()
+                    .body();
+
+            JSONArray topStoryIds = new JSONArray(topStoriesJson);
             int count = 0;
+
+            // Normalizar e dividir o título de pesquisa
+            title = Normalizer.normalize(title, Normalizer.Form.NFD)
+                    .replaceAll("[\\p{InCombiningDiacriticalMarks}]", "")
+                    .replaceAll("[\\p{Punct}]", "")
+                    .toLowerCase();
+            String[] searchWords = title.split("\\s+");
 
             for (int i = 0; i < topStoryIds.length() && count < 30; i++) {
                 int id = topStoryIds.getInt(i);
-                JSONObject story = new JSONObject(fetchData(ITEM_URL + id + ".json"));
+                String storyJson = Jsoup.connect(ITEM_URL + id + ".json")
+                        .ignoreContentType(true)
+                        .execute()
+                        .body();
 
-                if (story.has("title") && story.has("url")) {
-                    String storyTitle = story.getString("title");
-                    String url = story.getString("url");
+                JSONObject story = new JSONObject(storyJson);
 
-                    if (storyTitle.toLowerCase().contains(title.toLowerCase())) {
+                if (story.has("title")) {
+                    String storyTitle = story.getString("title").toLowerCase();
+                    String storyText = story.has("text") ? story.getString("text").toLowerCase() : "";
+                    String url = story.has("url") ? story.getString("url") : "";
+
+                    boolean containsAnyWord = false;
+
+                    // Verifica no título ou texto da notícia (API)
+                    for (String word : searchWords) {
+                        if (storyTitle.contains(word) || storyText.contains(word)) {
+                            containsAnyWord = true;
+                            break;
+                        }
+                    }
+
+                    // Se não encontrar nada aí, tenta no HTML da página URL (se existir)
+                    if (!containsAnyWord && !url.isEmpty()) {
+                        try {
+                            Document doc = Jsoup.connect(url).get();
+                            String pageText = doc.text().toLowerCase();
+
+                            for (String word : searchWords) {
+                                if (pageText.contains(word)) {
+                                    containsAnyWord = true;
+                                    break;
+                                }
+                            }
+                        } catch (IOException e) {
+                            System.out.println("Erro ao aceder à página: " + url);
+                        }
+                    }
+
+                    // Adiciona se encontrar correspondência em qualquer parte
+                    if (containsAnyWord && !url.isEmpty()) {
                         queue.addFirst(url);
-                        System.out.println("Adicionado: " + storyTitle + " -> " + url);
+                        System.out.println("Adicionado à queue: " + story.getString("title") + " -> " + url);
+                    } else {
+                        System.out.println("Este url não contém a pesquisa.");
                     }
                 }
 
