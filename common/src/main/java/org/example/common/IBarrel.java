@@ -52,6 +52,8 @@ public interface IBarrel extends Remote {
 
     byte[] getFile() throws RemoteException;
 
-    void sync(String destino) throws RemoteException;
+    void sync(IBarrel barrel) throws RemoteException;
+
+    void receberCopia(byte[] ficheiro) throws RemoteException;
 }
 

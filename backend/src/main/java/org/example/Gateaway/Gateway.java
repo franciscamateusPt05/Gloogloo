@@ -447,7 +447,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                     sinc = sincc;
                     break; // Remove este break se quiser processar todos os barrels
                 }
-                sinc.sync(barrel.getFicheiro());
+                sinc.sync(barrel);
 
             }
             barrel.connect();

@@ -420,15 +420,25 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     }
 
     @Override
-    public void sync(String destino) throws RemoteException {
-        lock.writeLock().lock();  // Lock de escrita porque vais gravar ficheiro
-        try (FileOutputStream fos = new FileOutputStream(destino)) {
-            fos.write(getFile());
-            System.out.println("Base de dados recebida e gravada em: " + destino);
+    public void sync(IBarrel barrel) throws RemoteException {
+        lock.readLock().lock();  // Lock de leitura, porque vamos ler o ficheiro
+        try {
+            barrel.receberCopia(getFile());  // envia para o outro Barrel
+            System.out.println("Cópia enviada para o Barrel de destino.");
         } catch (IOException e) {
-            throw new RemoteException("Erro ao gravar o ficheiro de base de dados", e);
+            throw new RemoteException("Erro ao ler a base de dados local", e);
         } finally {
-            lock.writeLock().unlock();  // Liberta o lock no final, mesmo com erro
+            lock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public void receberCopia(byte[] ficheiro) throws RemoteException {
+        try (FileOutputStream fos = new FileOutputStream(getFicheiro())) {
+            fos.write(ficheiro);
+            System.out.println("Cópia da base de dados recebida e gravada.");
+        } catch (IOException e) {
+            throw new RemoteException("Erro ao gravar a cópia recebida", e);
         }
     }
 
