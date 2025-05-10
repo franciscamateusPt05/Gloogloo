@@ -22,7 +22,7 @@
 
         .logo {
             margin-top: 100px;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             font-size: 80px;
             font-weight: bold;
             text-align: center;
@@ -31,13 +31,14 @@
         .content-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 50px;
             text-align: center;
         }
 
         h1 {
             color: #2c3e50;
             margin-bottom: 20px;
+            font-size: 40px;
         }
 
         h3 {
@@ -101,7 +102,7 @@
 
     <div class="content-container">
         <h1>System Statistics</h1>
-        <div id="stats"></div> <!-- Hidden raw data container -->
+        <div id="stats"></div>
         
         <div class="stat-section">
             <h3>Top Searches</h3>
@@ -127,18 +128,32 @@
     
         stompClient.connect({}, function (frame) {
             console.log('Connected: ' + frame);
-            stompClient.send("/statistics", {}, ""); 
+            stompClient.send("/statistics", {}, "");
     
             stompClient.subscribe("/topicGloogloo/statistics", function (message) {
                 const data = JSON.parse(message.body);
     
-                const topSearches = data.topSearches ? data.topSearches.join(", ") : 'No data available';
-                const barrelSizes = data.barrelSizes ? data.barrelSizes.join(", ") : 'No data available';
-                const responseTimes = data.raw;
-    
+                // Top Searches
+                const topSearches = data.topSearches?.join(", ") || 'No data available';
                 document.getElementById("topSearches").innerText = topSearches;
-                document.getElementById("barrelSizes").innerText = barrelSizes;
-                document.getElementById("responseTimes").innerText = responseTimes;
+
+                // Barrel Index Sizes
+                if (data.barrelIndexSizes) {
+                    const sortedBarrels = Object.keys(data.barrelIndexSizes).sort();
+                    const barrelText = sortedBarrels.map(key => `${key}: ${data.barrelIndexSizes[key]}`).join(", ");
+                    document.getElementById("barrelSizes").innerText = barrelText;
+                } else {
+                    document.getElementById("barrelSizes").innerText = "No data available";
+                }
+
+                // Average Response Times
+                if (data.averageResponseTimes) {
+                    const sortedBarrels = Object.keys(data.averageResponseTimes).sort();
+                    const responseText = sortedBarrels.map(key => `${key}: ${data.averageResponseTimes[key]}`).join(", ");
+                    document.getElementById("responseTimes").innerText = responseText;
+                } else {
+                    document.getElementById("responseTimes").innerText = "No data available";
+                }
             });
         });
     </script>
