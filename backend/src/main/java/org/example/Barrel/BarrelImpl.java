@@ -252,7 +252,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
-        String query = "SELECT from_url FROM url_links WHERE to_url = ?;";
+        String query = "SELECT to_url FROM url_links WHERE from_url = ?;";
 
         try {
             if (this.conn == null || this.conn.isClosed()) {

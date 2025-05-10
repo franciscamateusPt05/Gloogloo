@@ -220,38 +220,40 @@ public class WebController {
         }
     }
 
-    //@GetMapping("/url-connections")
-    //public String showUrlConnections() {
-    //    return "url-connections";
-    //}
-
     @GetMapping("/url-connections")
-    @ResponseBody
-    public String getConnections(@RequestParam String input, @RequestParam(defaultValue = "1") int page, Model model) {
+    public Object getConnections(@RequestParam(value = "input", required = false) String input,
+                                 @RequestParam(defaultValue = "1") int page,
+                                 Model model) {
         int size = 10;
+
+        // Initial load, just show the form page
+        if (input == null) {
+            return "url-connections";
+        }
 
         try {
             if (input == null || input.trim().isEmpty()) {
-                model.addAttribute("error", "URL input cannot be empty.");
-                return "error";
+                return ResponseEntity.badRequest().body("URL input cannot be empty.");
             }
 
             if (!isValidURL(input)) {
-                model.addAttribute("error", "Invalid URL format.");
-                return "error";
+                return ResponseEntity.badRequest().body("Invalid URL format.");
             }
 
             SearchResult result = gateway.getConnections(input);
             List<String> urls = result.getUrls();
 
+            if (urls == null || urls.isEmpty()) {
+                model.addAttribute("error", "No results found for your query.");
+            }
+
             int totalResults = urls.size();
             int totalPages = (int) Math.ceil((double) totalResults / size);
 
-            if (page < 1) page = 1;
-            if (page > totalPages) page = totalPages;
-
+            page = Math.max(1, Math.min(page, totalPages));
             int start = (page - 1) * size;
             int end = Math.min(start + size, totalResults);
+
             List<String> pageUrls = urls.subList(start, end);
 
             model.addAttribute("urls", pageUrls);
@@ -262,14 +264,12 @@ public class WebController {
             model.addAttribute("prevPage", page > 1 ? page - 1 : 1);
             model.addAttribute("nextPage", page < totalPages ? page + 1 : totalPages);
 
+            return "result-url-connections";
         } catch (RemoteException e) {
-            model.addAttribute("error", "Failed to get connections: " + e.getMessage());
+            model.addAttribute("error", "Search failed: " + e.getMessage());
             return "error";
         }
-
-        return "result-url-connections";
     }
-
 
     @GetMapping("/statistics")
     public String showStatistics(Model model) {

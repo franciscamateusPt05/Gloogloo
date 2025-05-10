@@ -5,12 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gloogloo - URL Connections</title>
     <link th:href="@{/styles.css}" rel="stylesheet">
+    <style>
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 30px;
+            text-align: center;
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #34A853;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            font-size: 14px;
+            transition: opacity 0.3s ease;
+        }
+        .popup.error {
+            background-color: #EA4335;
+        }
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .action-buttons button {
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
 
 <div class="nav">
     <a href="/index">Search</a>
-    <a href="/insert-url">Check Url Connections</a>
+    <a href="/insert-url">Insert Urls</a>
+    <a href="/url-connections">Check Url Connections</a>
     <a href="/statistics">Statistics</a>
 </div>
 
@@ -25,24 +61,58 @@
     <span class="blue">o</span>
 </div>
 
+<h1>Check Url Connections</h1>
+
 <!-- URL Input Form -->
-<form th:action="@{/url-connections}" method="get">
-    <input type="text" class="search-box" name="input" placeholder="Enter URL" required>
+<form id="urlForm" method="get">
+    <input type="text" class="search-box" id="urlInput" name="input" placeholder="Enter URL" required>
     <div class="buttons">
         <button class="button" type="submit">Check URL Connections</button>
     </div>
 </form>
 
-<!-- Display Error Pop-Up using JavaScript -->
+<div id="popup" class="popup"></div>
+
 <script>
-    // Check for any error message in the URL
-    const errorMessage = /*[[${error}]]*/'';
-    
-    if (errorMessage) {
-        alert(errorMessage); // Show an alert with the error message
-    }
+    document.getElementById("urlForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const input = document.getElementById("urlInput").value.trim();
+        const popup = document.getElementById("popup");
+
+        if (input === "") {
+            popup.textContent = "URL input cannot be empty.";
+            popup.className = "popup error";
+            popup.style.display = "block";
+            setTimeout(() => popup.style.display = "none", 3000);
+            return;
+        }
+
+        fetch("/url-connections?input=" + encodeURIComponent(input), {
+            method: "GET",
+        })
+        .then(async (response) => {
+            const message = await response.text();
+
+            if (!response.ok) {
+                popup.textContent = message;
+                popup.className = "popup error";
+                popup.style.display = "block";
+                setTimeout(() => popup.style.display = "none", 3000);
+                return;
+            }
+
+            // Redirect to result page if successful
+            window.location.href = "/url-connections?input=" + encodeURIComponent(input);
+        })
+        .catch(() => {
+            popup.textContent = "Something went wrong.";
+            popup.className = "popup error";
+            popup.style.display = "block";
+            setTimeout(() => popup.style.display = "none", 3000);
+        });
+    });
 </script>
 
-<script th:src="@{/script.js}"></script>
 </body>
 </html>

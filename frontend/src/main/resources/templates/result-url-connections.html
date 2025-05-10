@@ -4,28 +4,78 @@
     <meta charset="UTF-8">
     <title>Results Connections Gloogloo</title>
     <link th:href="@{/styles.css}" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 10px;
+            text-align: left;
+        }
+
+        .nav {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h2 {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .result-url {
+            color: gray;
+            font-size: 0.9em;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .pagination-container {
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        .pagination-container a {
+            margin-right: 10px;
+            color: #1a0dab;
+            text-decoration: none;
+        }
+
+        .openai {
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
 
-    <div class="nav">
-        <a href="/index">Search</a>
-        <a href="/insert-url">Insert Urls</a>
-        <a href="/url-connections">Check Url Connections</a>
-        <a href="/statistics">Statistics</a>
-    </div>
-    
-    <div class="logo">
-        <span class="blue">G</span>
-        <span class="red">l</span>
-        <span class="yellow">o</span>
-        <span class="blue">o</span>
-        <span class="green">g</span>
-        <span class="red">l</span>
-        <span class="yellow">o</span>
-        <span class="blue">o</span>
-    </div>
+<div class="nav">
+    <a href="/index">Search</a>
+    <a href="/insert-url">Insert Urls</a>
+    <a href="/url-connections">Check Url Connections</a>
+    <a href="/statistics">Statistics</a>
+</div>
 
-<h2>Results for: <span th:text="${input}"></span></h2>
+<div class="logo">
+    <span class="blue">G</span>
+    <span class="red">l</span>
+    <span class="yellow">o</span>
+    <span class="blue">o</span>
+    <span class="green">g</span>
+    <span class="red">l</span>
+    <span class="yellow">o</span>
+    <span class="blue">o</span>
+</div>
+
+<h2>Results for <span th:text="${input}"></span></h2>
+
+<!-- Message for no results found -->
+<div th:if="${message}">
+    <p th:text="${message}" style="color: red; font-weight: bold;"></p>
+</div>
 
 <!-- Display error message if exists -->
 <div th:if="${error}" style="color: red; font-weight: bold;">
@@ -33,19 +83,20 @@
 </div>
 
 <!-- Display the connection results -->
-<div th:if="${urls}">
-    <ul>
-        <li th:each="url : ${urls}">
-            <a th:href="@{${url}}" th:text="${url}"></a>
-        </li>
-    </ul>
+<div class="container">
+    <div th:if="${urls}">
+        <ul>
+            <li th:each="url : ${urls}">
+                <a th:href="@{${url}}" th:text="${url}" class="result-url"></a>
+            </li>
+        </ul>
+    </div>
 </div>
 
 <!-- Pagination -->
-<div>
+<div class="pagination-container" th:if="${totalPages > 0}">
     <span th:text="'Page ' + ${currentPage} + ' / ' + ${totalPages}"></span>
     <div>
-        <!-- Adjust pagination links to point to url-connections -->
         <a th:href="@{/url-connections(input=${input}, page=1)}">First</a>
         <a th:href="@{/url-connections(input=${input}, page=${prevPage})}">Previous</a>
         <a th:href="@{/url-connections(input=${input}, page=${nextPage})}">Next</a>
