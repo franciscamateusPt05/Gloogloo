@@ -20,6 +20,12 @@ import java.util.logging.Logger;
 
 import org.example.common.*;
 
+/**
+ * Implementation of the IBarrel interface for RMI-based indexing and search services.
+ * <p>
+ * Handles word indexing, searching, synchronization, and connection with SQLite databases.
+ * </p>
+ */
 public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     private static final Logger logger = Logger.getLogger(BarrelImpl.class.getName());
     private static final String BARREL_CONFIG_FILE = "backend/src/main/java/org/example/Properties/barrel.properties";
@@ -30,7 +36,12 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
     public String ficheiro;
     ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-
+    /**
+     * Constructs a new BarrelImpl instance using the specified barrel name to load configuration.
+     *
+     * @param barrelName Name identifier for the barrel (e.g., "barrel1" or "barrel2").
+     * @throws RemoteException If RMI or file loading fails.
+     */
     public BarrelImpl(String barrelName) throws RemoteException {
         super();
 
@@ -44,19 +55,28 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
             throw new RemoteException("Erro ao carregar o arquivo de propriedades", e);
         }
 
-        // Escolher a configuração do Barrel com base no nome (barrel1 ou barrel2)
+        // Escolher a configuração do Barrel com base no nome
         rmiUrl = properties.getProperty(barrelName + ".rmi.url");
         dbUrl = properties.getProperty(barrelName + ".db.url");
         this.ficheiro = properties.getProperty(barrelName + ".db.file");
 
-        // Log de depuração
         logger.info("Conectando ao Barrel: " + barrelName);
         logger.info("RMI URL: " + rmiUrl);
         logger.info("Banco de Dados URL: " + dbUrl);
 
     }
 
-    // Método para adicionar uma palavra ao índice associada a uma URL
+    /**
+     * Adds words and metadata to the inverse index database, ensuring thread-safety with write locking.
+     *
+     * @param words    Map of words and their frequencies.
+     * @param url      URL the words are associated with.
+     * @param toUrls   List of URLs linked from this URL.
+     * @param titulo   Title of the document.
+     * @param citaçao  Citation/snippet from the document.
+     * @throws RemoteException If RMI or SQL operations fail.
+     * @throws SQLException    If a database error occurs.
+     */
     @Override
     public synchronized void addToIndex(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
             lock.writeLock().lock();
@@ -78,6 +98,27 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
     }
 
+    /**
+     * Writes indexing data to the database. This includes:
+     * <ul>
+     *     <li>Inserting or updating words in the {@code word} table.</li>
+     *     <li>Inserting the URL into the {@code urls} table if it doesn't exist,
+     *         along with its title and citation.</li>
+     *     <li>Inserting word-url-frequency mappings into the {@code word_url} table.</li>
+     *     <li>Storing outgoing URL links in the {@code url_links} table.</li>
+     * </ul>
+     *
+     * The method ensures all operations are wrapped in a single transaction and commits
+     * the transaction at the end. If an error occurs, the transaction is rolled back.
+     *
+     * @param words     A map containing words as keys and their frequency as values.
+     * @param url       The source URL associated with the words.
+     * @param toUrls    A list of URLs that the source URL links to (outgoing links).
+     * @param titulo    The title of the webpage at the given URL.
+     * @param citaçao   A snippet or citation from the webpage.
+     * @throws RemoteException if there's a problem with remote communication.
+     * @throws SQLException if any SQL operation fails.
+     */
     private void WriteData(Map<String, Integer> words, String url, List<String> toUrls, String titulo, String citaçao) throws RemoteException, SQLException {
 
         if (this.conn == null || this.conn.isClosed()) {
@@ -97,14 +138,14 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
                 stmt.executeUpdate();
             }
 
-            // Inserir a URL na tabela urls
+            // Inserir o URL na tabela urls
             String selectUrlSQL = "SELECT url FROM urls WHERE url = ?";
             try (PreparedStatement stmt = this.conn.prepareStatement(selectUrlSQL)) {
                 stmt.setString(1, url);
                 var resultSet = stmt.executeQuery();
 
                 if (!resultSet.next()) {
-                    // Se a URL não existir, insira a nova URL com dados default
+                    // Se a URL não existir, inserir novo URL com dados default
                     String insertUrlSQL = "INSERT INTO urls (url, ranking, titulo, citacao) VALUES (?, 0, ?, ?)";
                     try (PreparedStatement insertStmt = this.conn.prepareStatement(insertUrlSQL)) {
                         insertStmt.setString(1, url);
@@ -138,6 +179,14 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         conn.commit();
     }
 
+    /**
+     * Searches the index for documents containing the given words.
+     *
+     * @param words List of search terms.
+     * @return List of SearchResult objects matching the search criteria.
+     * @throws RemoteException If a remote or database error occurs.
+     */
+    @Override
     public List<SearchResult> search(ArrayList<String> words) throws RemoteException {
         List<SearchResult> results = new ArrayList<>();
 
@@ -209,8 +258,15 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return results;
     }
 
+    /**
+     * Updates the top words frequency for the given words in databse.
+     *
+     * @param words List of words to update.
+     * @throws RemoteException If a remote or SQL error occurs.
+     */
+    @Override
     public synchronized void updateTopWords(ArrayList<String> words) throws RemoteException {
-        // Start a transaction
+        // Starting the transaction
         try {
             if (this.conn == null || this.conn.isClosed()) {
                 logger.warning("Conexão com o banco está fechada. Tentando reconectar...");
@@ -249,7 +305,14 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
-
+    /**
+     * Retrieves URL connections from a specified URL.
+     *
+     * @param url Source URL to get linked destinations from.
+     * @return SearchResult containing the URL and its connections.
+     * @throws RemoteException If a database error occurs.
+     */
+    @Override
     public SearchResult getConnections(String url) throws RemoteException {
         List<String> connectedUrls = new ArrayList<>();
         String query = "SELECT to_url FROM url_links WHERE from_url = ?;";
@@ -280,6 +343,14 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return new SearchResult(url, connectedUrls);
     }
 
+    /**
+     * Checks whether the given URL exists in the index.
+     *
+     * @param url URL to check.
+     * @return True if the URL exists, false otherwise.
+     * @throws RemoteException If a database error occurs.
+     */
+    @Override
     public boolean containsUrl(String url) throws RemoteException {
         String query = "SELECT COUNT(*) FROM urls WHERE url = ?";
         boolean resposta = true;
@@ -308,6 +379,13 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return resposta;
     }
 
+    /**
+     * Retrieves the top 10 most searched words.
+     *
+     * @return List of top searched words.
+     * @throws RemoteException If a database access error occurs.
+     */
+    @Override
     public List<String> getTopSearches() throws RemoteException {
         List<String> topSearches = new ArrayList<>();
 
@@ -329,6 +407,13 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return topSearches;
     }
 
+    /**
+     * Returns the number of indexed word entries.
+     *
+     * @return Integer representing the size of the word_url table.
+     * @throws RemoteException If a database error occurs.
+     */
+    @Override
     public int getSize() throws RemoteException {
 
         String query = "SELECT COUNT(*) FROM word_url";  // Query to count rows in word_url table
@@ -339,17 +424,24 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
 
             // If there is a result, return the count
             if (rs.next()) {
-                return rs.getInt(1);  // Return the count from the query result
+                return rs.getInt(1); 
             } else {
-                return 0;  // Return 0 if no rows are found
+                return 0;
             }
         } catch (Exception e) {
-            // Handle exceptions, such as connection errors or SQL issues
             e.printStackTrace();
             throw new RemoteException("Error querying the database", e);
         }
     }
 
+    /**
+     * Retrieves a list of the most frequent words indexed.
+     * This is based on the top 5% of frequency totals.
+     *
+     * @return List of frequently used words.
+     * @throws RemoteException If a database error occurs.
+     */
+    @Override
     public List<String> getFrequentWords() throws RemoteException {
         List<String> frequentWords = new ArrayList<>();
 
@@ -392,11 +484,22 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         return frequentWords;
     }
 
-
+    /**
+     * Returns the file path of the local database file.
+     *
+     * @return Path to the local database file.
+     * @throws RemoteException If remote access fails.
+     */
+    @Override
     public String getFicheiro() throws RemoteException {
         return ficheiro;
     }
 
+    /**
+     * Connects to the barrel's database using the loaded configuration.
+     *
+     * @throws RemoteException If a connection error occurs.
+     */
     public void connect() throws RemoteException {
         // Conectar ao banco de dados do Barrel
         try {
@@ -408,10 +511,16 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
+    /**
+     * Retrieves the contents of the database file as a byte array.
+     *
+     * @return Byte array of the file contents.
+     * @throws RemoteException If an IO error occurs.
+     */
     @Override
     public byte[] getFile() throws RemoteException {
         try {
-            Path path = Paths.get(getFicheiro()); // substitui com o caminho real
+            Path path = Paths.get(getFicheiro());
             return Files.readAllBytes(path);
         } catch (IOException e) {
             e.printStackTrace();
@@ -419,6 +528,12 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
+    /**
+     * Sends a copy of the database file to another barrel.
+     *
+     * @param barrel Remote barrel to sync with.
+     * @throws RemoteException If file reading or RMI transfer fails.
+     */
     @Override
     public void sync(IBarrel barrel) throws RemoteException {
         lock.readLock().lock();  // Lock de leitura, porque vamos ler o ficheiro
@@ -432,6 +547,12 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
         }
     }
 
+    /**
+     * Receives and saves a copy of the database from another barrel.
+     *
+     * @param ficheiro Byte array representing the file to write.
+     * @throws RemoteException If an IO or Remote error occurs during writing.
+     */
     @Override
     public void receberCopia(byte[] ficheiro) throws RemoteException {
         try (FileOutputStream fos = new FileOutputStream(getFicheiro())) {

@@ -24,6 +24,12 @@ import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+/**
+ * The Gateway class is a server-side RMI implementation that handles interactions between various barrels
+ * and a queue service. It provides methods for inserting URLs into the queue, performing searches, retrieving
+ * statistics, and managing barrel registrations. The Gateway also integrates with external services such as
+ * the Hacker News API and provides an interface for clients to request and receive updates.
+ */
 public class Gateway extends UnicastRemoteObject implements IGateway {
 
     private IBarrel selectedBarrel;
@@ -48,11 +54,22 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
 
     private static String API_KEY;
 
+    /**
+     * Initializes the Gateway object and sets up the system statistics.
+     *
+     * @throws RemoteException If an error occurs while initializing the object.
+     */
     public Gateway() throws RemoteException {
         super();
         this.currentStats = new SystemStatistics(new ArrayList<>(), new HashMap<>(), new HashMap<>());
     }
 
+    /**
+     * The main method that initializes and runs the Gateway service, connecting to the Queue and Barrel services.
+     * It also binds the Gateway object to the RMI registry for remote clients to access.
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
         try {
             Properties prop = new Properties();
@@ -81,6 +98,10 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Initializes the Gateway by loading configuration files and connecting to the Queue and Barrel services.
+     * It also checks for active barrels.
+     */
     private void initialize() {
         try {
             Properties queueProp = loadProperties(QUEUE_CONFIG_FILE);
@@ -104,6 +125,13 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Loads properties from the specified file path.
+     *
+     * @param filePath The path of the properties file to load.
+     * @return The loaded properties.
+     * @throws IOException If an error occurs while loading the file.
+     */
     private Properties loadProperties(String filePath) throws IOException {
         Properties prop = new Properties();
         try (FileInputStream input = new FileInputStream(filePath)) {
@@ -115,6 +143,13 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return prop;
     }
 
+    /**
+     * Constructs the RMI URL for a service based on the provided properties.
+     *
+     * @param prop   The properties containing RMI connection information.
+     * @param prefix The prefix used to construct the property keys.
+     * @return The constructed RMI URL.
+     */
     private String getRmiUrl(Properties prop, String prefix) {
         String host = prop.getProperty(prefix + ".rmi.host", "localhost");
         String port = prop.getProperty(prefix + ".rmi.port", "1112");
@@ -126,7 +161,13 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return "rmi://" + host + ":" + port + "/" + service;
     }
 
-
+    /**
+     * Checks the active barrels defined in the properties file and attempts to establish connections with them.
+     * Active barrels are stored in the activeBarrels map.
+     *
+     * @param prop The properties file containing barrel connection information.
+     * @throws IOException If an error occurs while connecting to the barrels.
+     */
     private void checkActiveBarrels(Properties prop) throws IOException {
         activeBarrels.clear();
         int i = 1;
@@ -167,8 +208,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-
-
+    /**
+     * Selects a random barrel from the list of active barrels.
+     */
     private void selectRandomBarrel() {
         List<String> barrelIds = new ArrayList<>(activeBarrels.keySet());
         if (!barrelIds.isEmpty()) {
@@ -178,6 +220,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Inserts a URL into the queue for further processing.
+     *
+     * @param url The URL to insert into the queue.
+     * @throws RemoteException If the Queue service is not initialized.
+     */
     public void insertURL(String url) throws RemoteException {
         if (queue == null) {
             throw new RemoteException("Queue service is not initialized.");
@@ -186,6 +234,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         System.out.println("URL inserted successfully into Queue");
     }
 
+    /**
+     * Inserts a URL at the beginning of the queue for further processing.
+     *
+     * @param url The URL to insert into the queue.
+     * @throws RemoteException If the Queue service is not initialized.
+     */
     public void addFirst(String url) throws RemoteException{
         if (queue == null) {
             throw new RemoteException("Queue service is not initialized.");
@@ -277,7 +331,9 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return results;
     }
 
-    // Refresh active barrels and select a random barrel
+    /**     
+     * Refreshes the active barrels list and selects a random barrel for the search.
+     */
     private void refreshAndSelectBarrel() {
         System.out.println("[Gateway] Refreshing active barrels...");
         try {
@@ -289,6 +345,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Retrieves the top search terms from the currently selected barrel.
+     *
+     * @return A list of top search terms.
+     * @throws RemoteException If an error occurs while retrieving the top searches.
+     */
     private List<String> getTopSearches() {
         if (selectedBarrel == null || selectedBarrelId == null)
             selectRandomBarrel();
@@ -304,7 +366,14 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-
+    /**
+     * Updates the system statistics with the latest search results and response times.
+     * This includes updating the top search terms, response times, and barrel index sizes.
+     * It notify all clients registered.
+     *
+     * @param search       The list of search terms that were queried.
+     * @param responseTime The response time of the search operation.
+     */
     private void updateStatistics(ArrayList<String> search, double responseTime) {
         List<String> topSearches = new ArrayList<>();
         HashMap<String, Double> response = new HashMap<>();
@@ -348,7 +417,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-
+    /**
+     * Retrieves the current system statistics, including barrel sizes and average response times.
+     *
+     * @return The current system statistics.
+     * @throws RemoteException If an error occurs while retrieving the statistics.
+     */
     public synchronized SystemStatistics getStatistics() throws RemoteException {
         HashMap<String, Integer> barrelSizes = new HashMap<>();
         for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
@@ -446,11 +520,22 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return result;
     }
 
+    /**
+     * Registers a listener for system statistics updates. The listener will be notified of any changes to the statistics.
+     *
+     * @param listener The listener to register.
+     * @throws RemoteException If an error occurs while registering the listener.
+     */
     public synchronized void registerStatisticsListener(IStatistics listener) throws RemoteException {
         listeners.add(listener);
         System.out.println("Client registered for statistics updates.");
     }
 
+    /**
+     * Notifies all registered listeners with the current system statistics.
+     *
+     * @throws RemoteException If an error occurs while notifying the listeners.
+     */
     private void notifyListeners() throws RemoteException {
         Iterator<IStatistics> iterator = listeners.iterator();
         while (iterator.hasNext()) {
@@ -464,6 +549,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Broadcasts updated statistics to all listeners, including clients who have registered for updates.
+     *
+     * @param stats The updated statistics to broadcast.
+     * @throws RemoteException If an error occurs while broadcasting the statistics.
+     */
     public synchronized void broadcastStatistics(SystemStatistics stats) throws RemoteException {
         for (IStatistics listener : listeners) {
             try {
@@ -474,6 +565,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Registers a new barrel with the Gateway, synchronizing it with any existing barrels if necessary.
+     *
+     * @param rmi The RMI URL of the barrel to register.
+     * @throws RemoteException If an error occurs while registering the barrel.
+     */
     public void registarBarrel(String rmi) throws RemoteException {
         try {
             try{
@@ -510,6 +607,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Unregisters a barrel from the Gateway.
+     *
+     * @param rmi The RMI URL of the barrel to unregister.
+     * @throws RemoteException If an error occurs while unregistering the barrel.
+     */
     public void unregisterBarrel(String rmi) throws RemoteException {
         if (this.activeBarrels.remove(rmi) != null) {
             System.out.println("Barrel removido com sucesso: " + rmi);
@@ -518,12 +621,22 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
-
-
+    /**
+     * Retrieves the list of active barrels currently connected to the Gateway.
+     *
+     * @return A map of barrel IDs to barrel objects.
+     * @throws RemoteException If an error occurs while retrieving the barrels.
+     */
     public Map<String, IBarrel> getBarrels() throws RemoteException{
         return new HashMap<>(this.activeBarrels);
     }
 
+    /**
+     * Retrieves a list of stopwords from the Queue service.
+     *
+     * @return A list of stopwords.
+     * @throws RemoteException If an error occurs while retrieving the stopwords.
+     */
     public List<String> getStopwords() throws RemoteException {
         if (queue != null) {
             return queue.getStopwords();
@@ -531,7 +644,20 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         throw new RemoteException("QueueServer not connected.");
     }
 
-
+    /**
+     * Performs a search on Hacker News top stories and adds URLs to the queue if any
+     * of the search terms are found in the article's title, text, or HTML content.
+     * <p>
+     * This method queries the Hacker News API for the top stories, normalizes the search 
+     * title by removing diacritical marks and punctuation, and then searches for each 
+     * term in the title and text of the articles. If no match is found, it fetches the 
+     * HTML content of the article and checks there as well.
+     * </p>
+     *
+     * @param title the search title used to match against Hacker News articles' titles, texts, and HTML content.
+     * @throws RemoteException if there is a remote communication error, including failures to connect to the Hacker News API.
+     */
+    @Override
     public void hacker(String title) throws RemoteException {
         try {
             String topStoriesJson = Jsoup.connect(TOP_STORIES_URL)
@@ -606,6 +732,14 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
     }
 
+    /**
+     * Interacts with the OpenRouter API to provide AI-assisted responses based on the search results.
+     *
+     * @param search The search query that generated the search results.
+     * @param result The search results to be used in the AI request.
+     * @return A string containing the AI-generated response.
+     * @throws RemoteException If an error occurs while communicating with the OpenRouter API.
+     */
     @Override
     public String getAI(String search, List<SearchResult> result) throws RemoteException {
         String apiKey = API_KEY;
@@ -663,6 +797,15 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return "No response from AI";
     }
 
+    /**
+     * Returns the last five sentences from the input string.
+     * <p>
+     * This method is used with the {@link #getAi()} method.
+     * </p>
+     * 
+     * @param input the input string
+     * @return the last five sentences, or fewer if the input has less than five sentences
+     */
     private String filterLastFiveSentences(String input) {
         String[] sentences = input.split("(?<=[.!?])\\s+");
         StringBuilder result = new StringBuilder();

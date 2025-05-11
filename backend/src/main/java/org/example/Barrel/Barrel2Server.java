@@ -10,13 +10,29 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+
+/**
+ * Initializes and registers the Barrel2 RMI server.
+ * <p>
+ * Loads configuration from property files, creates an RMI registry,
+ * binds the Barrel2 service, and registers it with the Gateway.
+ * </p>
+ */
 public class Barrel2Server {
 
     private static final Logger logger = Logger.getLogger(Barrel2Server.class.getName());
     private static final String BARREL_CONFIG_FILE = "backend/src/main/java/org/example/Properties/barrel.properties";
     private static final String GATEWAY_CONFIG_FILE = "frontend/src/main/resources/gateway.properties";
 
-
+    /**
+     * Entry point for the Barrel2 RMI server.
+     * <p>
+     * Loads the barrel configuration, starts the RMI registry, binds the Barrel2 service,
+     * and registers it with the gateway service.
+     * </p>
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
         // Carregar as propriedades
         Properties properties = new Properties();
@@ -55,6 +71,14 @@ public class Barrel2Server {
             e.printStackTrace();  // Imprimir o stack trace completo para mais detalhes.
         }
     }
+
+    /**
+     * Loads properties from a given file path.
+     *
+     * @param filePath the path to the properties file.
+     * @return a {@link Properties} object loaded from the specified file.
+     * @throws IOException if the file cannot be read or is empty.
+     */
     private static Properties loadProperties(String filePath) throws IOException {
         Properties prop = new Properties();
         try (FileInputStream input = new FileInputStream(filePath)) {
@@ -66,6 +90,13 @@ public class Barrel2Server {
         return prop;
     }
 
+    /**
+     * Constructs the RMI URL from the provided properties.
+     *
+     * @param prop a {@link Properties} object containing the RMI host, port, and service name.
+     * @return the RMI URL as a {@link String}.
+     * @throws IllegalArgumentException if any required RMI property is missing.
+     */
     private static String getRmiUrl(Properties prop) {
         String host = prop.getProperty( "rmi.host", "localhost");
         String port = prop.getProperty("rmi.port", "1112");
