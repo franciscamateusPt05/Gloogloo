@@ -26,6 +26,11 @@ public class SearchResult implements Serializable {
     private String snippet;
 
     /**
+     * Constructs an empty SearchResult object.
+     */
+    public SearchResult(){}
+
+    /**
      * Constructs a SearchResult object for a query with multiple results.
      *
      * @param query The search URL.
@@ -92,19 +97,5 @@ public class SearchResult implements Serializable {
      */
     public String getSnippet() {
         return snippet;
-    }
-
-    /**
-     * Converts the search result into a readable format.
-     *
-     * @return A formatted string representation.
-     */
-    @Override
-    public String toString() {
-        if (title != null && url != null && snippet != null) {
-            return "Title: " + title + "\nURL: " + url + "\nSnippet: " + snippet + "\n";
-        } else {
-            return "Search Query: " + query + "\nResults:\n" + String.join("\n", urls);
-        }
     }
 }

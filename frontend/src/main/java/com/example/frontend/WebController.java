@@ -223,7 +223,7 @@ public class WebController {
     }
 
     @GetMapping("/url-connections")
-    public Object getConnections(@RequestParam(value = "input", required = false) String input,
+    public Object checkConnections(@RequestParam(value = "input", required = false) String input,
                                  @RequestParam(defaultValue = "1") int page,
                                  Model model) {
         int size = 10;
@@ -249,6 +249,8 @@ public class WebController {
                 model.addAttribute("error", "No results found for your query.");
             }
 
+            sendStatistics();
+
             int totalResults = urls.size();
             int totalPages = (int) Math.ceil((double) totalResults / size);
 
@@ -257,8 +259,6 @@ public class WebController {
             int end = Math.min(start + size, totalResults);
 
             List<String> pageUrls = urls.subList(start, end);
-
-            sendStatistics();
 
             model.addAttribute("urls", pageUrls);
             model.addAttribute("currentPage", page);
@@ -277,7 +277,7 @@ public class WebController {
     }
 
     @GetMapping("/statistics")
-    public String showStatistics(Model model) {
+    public synchronized String showStatistics(Model model) {
         try {
             if (gateway == null) {
                 model.addAttribute("error", "Gateway not initialized.");
@@ -297,7 +297,7 @@ public class WebController {
     }
 
     @MessageMapping("/statistics")
-    public void sendStatistics() {
+    public synchronized void sendStatistics() {
         try {
             SystemStatistics stats = gateway.getStatistics();  // Assuming the method fetches stats
 

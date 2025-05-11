@@ -75,44 +75,20 @@
 
 <script>
     document.getElementById("urlForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-
         const input = document.getElementById("urlInput").value.trim();
         const popup = document.getElementById("popup");
 
         if (input === "") {
+            e.preventDefault(); // Prevent submission
             popup.textContent = "URL input cannot be empty.";
             popup.className = "popup error";
             popup.style.display = "block";
             setTimeout(() => popup.style.display = "none", 3000);
-            return;
         }
-
-        fetch("/url-connections?input=" + encodeURIComponent(input), {
-            method: "GET",
-        })
-        .then(async (response) => {
-            const message = await response.text();
-
-            if (!response.ok) {
-                popup.textContent = message;
-                popup.className = "popup error";
-                popup.style.display = "block";
-                setTimeout(() => popup.style.display = "none", 3000);
-                return;
-            }
-
-            // Redirect to result page if successful
-            window.location.href = "/url-connections?input=" + encodeURIComponent(input);
-        })
-        .catch(() => {
-            popup.textContent = "Something went wrong.";
-            popup.className = "popup error";
-            popup.style.display = "block";
-            setTimeout(() => popup.style.display = "none", 3000);
-        });
+        // If input is valid, let the browser submit the form as usual (no fetch)
     });
 </script>
+
 
 </body>
 </html>

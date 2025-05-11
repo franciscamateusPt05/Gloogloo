@@ -1,11 +1,7 @@
 package org.example.Gateaway;
 
 import java.io.*;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -13,7 +9,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.text.Normalizer;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -69,7 +64,7 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             int port = Integer.parseInt(prop.getProperty("rmi.port", "1099"));
             String serviceName = prop.getProperty("rmi.service_name", "GatewayService");
 
-            API_KEY = "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";
+            API_KEY = prop.getProperty("api.key");
 
             Gateway gateway = new Gateway();
 
@@ -199,6 +194,19 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         System.out.println("URL inserted successfully into Queue");
     }
 
+    /**
+     * Performs a search across the active barrels for the given search terms.
+     * <p>
+     * A barrel is selected randomly via {@code refreshAndSelectBarrel()} and tried first. If it fails or returns
+     * no results, the remaining barrels are tried in order. All barrels are instructed to update their top-word
+     * statistics before searching. The method records response times and updates search-related statistics.
+     * </p>
+     *
+     * @param search An {@link ArrayList} of keywords to search for.
+     * @return A list of {@link SearchResult} objects containing results from the first successful barrel, 
+     *         or an empty list if all barrels fail or return no results.
+     * @throws RemoteException If a remote communication error occurs.
+     */
     public List<SearchResult> search(ArrayList<String> search) throws RemoteException {
         // Refresh barrels and select a random barrel every time a search is performed
         refreshAndSelectBarrel();
@@ -218,8 +226,20 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
             barrel.updateTopWords(search);
         }
 
+        List<Map.Entry<String, IBarrel>> barrelsToTry = new ArrayList<>(activeBarrels.entrySet());
+
+        // Ensure selected barrel is first
+        barrelsToTry.sort((entry1, entry2) -> {
+            boolean isFirstSelected = entry1.getKey().equals(selectedBarrelId);
+            boolean isSecondSelected = entry2.getKey().equals(selectedBarrelId);
+
+            if (isFirstSelected && !isSecondSelected) return -1;
+            if (!isFirstSelected && isSecondSelected) return 1;
+            return 0;
+        });
+
         // Try searching with all active barrels
-        for (Map.Entry<String, IBarrel> barrelEntry : activeBarrels.entrySet()) {
+        for (Map.Entry<String, IBarrel> barrelEntry : barrelsToTry) {
             String barrelId = barrelEntry.getKey();
             IBarrel barrel = barrelEntry.getValue();
 
@@ -239,12 +259,12 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
                 updateStatistics(search, responseTime);
 
 
-                if (!results.isEmpty()) {
-                    selectedBarrel = barrel;
-                    selectedBarrelId = barrelId;
-                    searchSucceeded = true;
-                    break;
-                }
+                selectedBarrel = barrel;
+                selectedBarrelId = barrelId;
+                searchSucceeded = true;
+                System.out.println("[Gateway] Finished search on barrel: " + barrelId);
+                break;
+                
             } catch (IOException e) {
                 System.err.println("[Gateway] Error during search on barrel " + barrelId + ": " + e.getMessage());
             }
@@ -262,33 +282,19 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         System.out.println("[Gateway] Refreshing active barrels...");
         try {
             checkActiveBarrels(loadProperties(BARREL_CONFIG_FILE));
-            if (selectedBarrel == null) {
-                System.err.println("[Gateway] No active barrels available.");
-            } else {
+            if (selectedBarrel == null && !activeBarrels.isEmpty())
                 selectRandomBarrel();
-            }
         } catch (IOException e) {
             System.err.println("[Gateway] Error refreshing active barrels: " + e.getMessage());
         }
     }
 
     private List<String> getTopSearches() {
-        if (selectedBarrel == null || selectedBarrelId == null) {
-            System.out.println("[Gateway] No selected barrel available.");
-            return new ArrayList<>();
-        }
+        if (selectedBarrel == null || selectedBarrelId == null)
+            selectRandomBarrel();
 
         try {
-            long startTime = System.nanoTime();
             List<String> topSearches = selectedBarrel.getTopSearches();
-            long endTime = System.nanoTime();
-            double responseTime = (endTime - startTime) / 1_000_000.0;
-            responseTime = (double) Math.round(responseTime * 100) / 100;
-
-            BarrelStats stats = responseTimes.get(selectedBarrelId);
-            if (stats != null) {
-                stats.addResponseTime(responseTime);
-            }
 
             return topSearches != null ? topSearches : new ArrayList<>();
 
@@ -362,41 +368,82 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         return currentStats;
     }
 
-    @Override
+    /**
+     * Attempts to retrieve URL connections from a given URL.
+     * <p>
+     * A barrel is selected randomly via {@code refreshAndSelectBarrel()} and tried first. If it fails or returns
+     * no results, the method iterates through the remaining barrels in order. It records response times and
+     * updates statistics accordingly.
+     * </p>
+     *
+     * @param url The URL for which to retrieve connection information.
+     * @return A {@link SearchResult} containing the found connection data, or an error message if all barrels fail.
+     * @throws RemoteException If a remote communication error occurs.
+     */
     public SearchResult getConnections(String url) throws RemoteException {
-        refreshAndSelectBarrel(); // Refresh barrels and select one randomly
+        // Refresh barrels and select a random barrel every time a getConnections is performed
+        refreshAndSelectBarrel();
 
         if (selectedBarrel == null) {
             System.out.println("[Gateway] No barrel available after refreshing.");
             return new SearchResult("No barrel available", Collections.emptyList());
         }
 
-        try {
-            long startTime = System.nanoTime();
-            SearchResult result = selectedBarrel.getConnections(url);
-            long endTime = System.nanoTime();
-            double responseTime = (endTime - startTime) / 1_000_000.0;
-            responseTime = (double) Math.round(responseTime * 100) / 100;
+        SearchResult result = new SearchResult();
+        boolean searchSucceeded = false;
+        
+        List<Map.Entry<String, IBarrel>> barrelsToTry = new ArrayList<>(activeBarrels.entrySet());
 
-            BarrelStats stats = responseTimes.get(selectedBarrelId);
-            stats.addResponseTime(responseTime);
+        // Ensure selected barrel is first
+        barrelsToTry.sort((entry1, entry2) -> {
+            boolean isFirstSelected = entry1.getKey().equals(selectedBarrelId);
+            boolean isSecondSelected = entry2.getKey().equals(selectedBarrelId);
 
-            ArrayList<String> url_ = new ArrayList<>();
-            url_.add(url);
+            if (isFirstSelected && !isSecondSelected) return -1;
+            if (!isFirstSelected && isSecondSelected) return 1;
+            return 0;
+        });
 
-            updateStatistics(url_, responseTime);
+        // Try searching with all active barrels if something went wrong
+        for (Map.Entry<String, IBarrel> barrelEntry : barrelsToTry) {
 
-            if (result == null || result.getUrls().isEmpty()) {
-                return new SearchResult(url, Collections.emptyList());
+            String barrelId = barrelEntry.getKey();
+            IBarrel barrel = barrelEntry.getValue();
+
+            System.out.println("[Gateway] Trying search on barrel: " + barrelId);
+
+            try {
+                long startTime = System.nanoTime();
+                result = barrel.getConnections(url);
+                long endTime = System.nanoTime();
+                double responseTime = (endTime - startTime) / 1_000_000.0;
+                responseTime = (double) Math.round(responseTime * 100) / 100;
+
+                BarrelStats stats = responseTimes.get(barrelId);
+                stats.addResponseTime(responseTime);
+
+                ArrayList<String> url_ = new ArrayList<>();
+                url_.add(url);
+
+                updateStatistics(url_, responseTime);
+
+                selectedBarrel = barrel;
+                selectedBarrelId = barrelId;
+                searchSucceeded = true;
+                System.out.println("[Gateway] Successful check connections on barrel: " + barrelId);
+                break;
+
+            } catch (RemoteException e) {
+                System.err.println("[Gateway] Error during getConnections: " + e.getMessage());
             }
-            return result;
-        } catch (RemoteException e) {
-            System.err.println("[Gateway] Error during getConnections: " + e.getMessage());
-            return new SearchResult("Error occurred for: " + url, Collections.emptyList());
-        } catch (@SuppressWarnings("hiding") IOException e) {
-            e.printStackTrace();
+        }
+        
+        if (!searchSucceeded) {
+            System.err.println("[Gateway] All barrels failed for search: " + url);
             return new SearchResult("Error occurred for: " + url, Collections.emptyList());
         }
+
+        return result;
     }
 
     public synchronized void registerStatisticsListener(IStatistics listener) throws RemoteException {
@@ -624,26 +671,6 @@ public class Gateway extends UnicastRemoteObject implements IGateway {
         }
         return result.toString().trim();
 
-    }
-
-
-    private static String fetchData(String urlString) throws IOException {
-        URL url = new URL(urlString);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("GET");
-
-        InputStream inputStream = connection.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-
-        StringBuilder response = new StringBuilder();
-        String line;
-
-        while ((line = reader.readLine()) != null) {
-            response.append(line);
-        }
-
-        reader.close();
-        return response.toString();
     }
 
 }
