@@ -21,12 +21,13 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
             prop.load(input);
             QUEUE_FILE = prop.getProperty("queue.file", "queue.txt");
             STOPWORDS_FILE = prop.getProperty("stopwords.file", "backend/stopwords.txt");
-            MAX_SIZE = Integer.parseInt(prop.getProperty("queue.max_size", "100"));
+            MAX_SIZE = Integer.parseInt(prop.getProperty("queue.max_size"));
         } catch (IOException | NumberFormatException e) {
-            QUEUE_FILE = "queue.txt";
-            STOPWORDS_FILE = "stopwords.txt";
+            QUEUE_FILE = "backend/queue.txt";
+            STOPWORDS_FILE = "backend/stopwords.txt";
             MAX_SIZE = 100;
         }
+        System.out.println(STOPWORDS_FILE);
     }
 
     protected QueueImp() throws RemoteException {
