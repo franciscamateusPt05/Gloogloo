@@ -518,7 +518,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
      * @throws RemoteException If an IO error occurs.
      */
     @Override
-    public byte[] getFile() throws RemoteException {
+    public synchronized byte[] getFile() throws RemoteException {
         try {
             Path path = Paths.get(getFicheiro());
             return Files.readAllBytes(path);
@@ -535,7 +535,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
      * @throws RemoteException If file reading or RMI transfer fails.
      */
     @Override
-    public void sync(IBarrel barrel) throws RemoteException {
+    public synchronized void sync(IBarrel barrel) throws RemoteException {
         lock.readLock().lock();  // Lock de leitura, porque vamos ler o ficheiro
         try {
             barrel.receberCopia(getFile());  // envia para o outro Barrel
@@ -554,7 +554,7 @@ public class BarrelImpl extends UnicastRemoteObject implements IBarrel {
      * @throws RemoteException If an IO or Remote error occurs during writing.
      */
     @Override
-    public void receberCopia(byte[] ficheiro) throws RemoteException {
+    public synchronized void receberCopia(byte[] ficheiro) throws RemoteException {
         try (FileOutputStream fos = new FileOutputStream(getFicheiro())) {
             fos.write(ficheiro);
             System.out.println("Cópia da base de dados recebida e gravada.");
