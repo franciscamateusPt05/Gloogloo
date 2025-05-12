@@ -15,19 +15,23 @@ Gloogloo is a distributed search engine inspired by the architecture and functio
 - [Functionalities](#functionalities)
 - [Requirements](#requirements)
 - [Execution Instructions](#execution-instructions)
+  - [1. Configure IPs and Ports](#1-configure-ips-and-ports)
+  - [2. Build the Project](#2-build-the-project)
+  - [3. Executing the Files](#3-executing-the-files)
+  - [4. Running the Frontend](#4-running-the-frontend)
 - [Testing](#testing)
 - [Work Distribution](#work-distribution)
 - [Documentation](#documentation)
 
 ---
 
-## 🚀 Introduction
+## Introduction
 
 The goal of Gloogloo is to simulate the behavior of a distributed search engine by building a backend that handles indexing, search, and statistics and a frontend that serves as the user interface. Communication is achieved using Java RMI and REST APIs (HackerNews, OpenRoute).
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ### Gateway
 
@@ -59,7 +63,7 @@ The goal of Gloogloo is to simulate the behavior of a distributed search engine 
 
 ---
 
-## 🧠 Functionalities
+## Functionalities
 
 - **Insert & Index URL**  
   Submit a URL via frontend → sent to Gateway → added to Queue → indexed by Downloaders → stored in all Barrels.
@@ -78,7 +82,7 @@ The goal of Gloogloo is to simulate the behavior of a distributed search engine 
 
 ---
 
-## ⚙️ Requirements
+## Requirements
 
 Ensure the following dependencies and tools are installed:
 
@@ -96,7 +100,7 @@ All `.properties` files must be correctly configured for host/IP and ports.
 
 ---
 
-## 🧾 Execution Instructions
+## Execution Instructions
 
 ### 1. Configure IPs and Ports
 
@@ -126,4 +130,18 @@ mvn clean install -DskipTests
 
 cd Gloogloo
 mvn clean install -DskipTests
-
+```
+### 3. Executing the files 
+Now the user should proceed to run the following files in seperate terminals
+ ```bash
+ QueueServer.java 
+ Gateway.java 
+ BarrelServer.java 
+ Barrel2Server.java 
+ Downloader.java
+```
+### 4. Running the frontend
+For the final step the user has to run the following command in the given directory of "cd Gloogloo/frontend"
+```bash
+mvn spring-boot:run -DskipTests
+```
