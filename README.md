@@ -19,9 +19,6 @@ Gloogloo is a distributed search engine inspired by the architecture and functio
   - [2. Build the Project](#2-build-the-project)
   - [3. Executing the Files](#3-executing-the-files)
   - [4. Running the Frontend](#4-running-the-frontend)
-- [Testing](#testing)
-- [Work Distribution](#work-distribution)
-- [Documentation](#documentation)
 
 ---
 
