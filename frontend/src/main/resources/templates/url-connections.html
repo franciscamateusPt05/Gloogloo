@@ -12,6 +12,7 @@
             font-size: 30px;
             text-align: center;
         }
+
         .popup {
             display: none;
             position: fixed;
@@ -27,15 +28,18 @@
             font-size: 14px;
             transition: opacity 0.3s ease;
         }
+
         .popup.error {
             background-color: #EA4335;
         }
+
         .action-buttons {
             display: flex;
             flex-direction: column;
             gap: 10px;
             margin-top: 20px;
         }
+
         .action-buttons button {
             width: 100%;
         }
@@ -46,7 +50,6 @@
 <div class="nav">
     <a href="/index">Search</a>
     <a href="/insert-url">Insert Urls</a>
-    <a href="/url-connections">Check Url Connections</a>
     <a href="/statistics">Statistics</a>
 </div>
 
@@ -73,22 +76,39 @@
 
 <div id="popup" class="popup"></div>
 
+<!-- Results Container -->
+<div id="resultsContainer" style="margin-top: 20px;"></div>
+
 <script>
     document.getElementById("urlForm").addEventListener("submit", function (e) {
+        e.preventDefault(); // Prevent form submission to check the input
+
         const input = document.getElementById("urlInput").value.trim();
         const popup = document.getElementById("popup");
 
+        // Clear any previous error messages
+        popup.style.display = "none"; // Hide the popup initially
+
+        // Check if the input is empty
         if (input === "") {
-            e.preventDefault(); // Prevent submission
             popup.textContent = "URL input cannot be empty.";
-            popup.className = "popup error";
-            popup.style.display = "block";
-            setTimeout(() => popup.style.display = "none", 3000);
+            popup.className = "popup error"; // Apply error class for red popup
+            popup.style.display = "block"; // Show the popup
+            return;
         }
-        // If input is valid, let the browser submit the form as usual (no fetch)
+
+        // Check if the URL is in valid format
+        const urlPattern = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,6}(\/[^\s]*)?$/i;
+        if (!urlPattern.test(input)) {
+            popup.textContent = "Invalid URL format.";
+            popup.className = "popup error"; // Apply error class for red popup
+            popup.style.display = "block"; // Show the popup
+            return;
+        }
+
+        // If the input is valid, redirect to the results page
+        window.location.href = `/url-connections?input=${encodeURIComponent(input)}`;
     });
 </script>
-
-
 </body>
 </html>
