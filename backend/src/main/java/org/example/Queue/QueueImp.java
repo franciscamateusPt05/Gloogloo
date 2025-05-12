@@ -6,7 +6,13 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
 
-
+/**
+ * Implementation of the IQueue interface using file storage and Java RMI.
+ * Handles URL queue management and stopword persistence.
+ * 
+ * Loads configuration from a properties file and manages persistence.
+ * 
+ */
 public class QueueImp extends UnicastRemoteObject implements IQueue {
     private static final String CONFIG_FILE = "backend/src/main/java/org/example/Properties/queue.properties";
     private static String QUEUE_FILE;
@@ -15,6 +21,10 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
     private final Queue<String> queue;
     private final List<String> stopwords;
 
+    /**
+     * Loads configuration from properties file on class initialization.
+     * Sets paths and limits for queue and stopwords.
+     */
     static {
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
             Properties prop = new Properties();
@@ -30,12 +40,24 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         System.out.println(STOPWORDS_FILE);
     }
 
+    /**
+     * Constructs a new QueueImp instance with an empty queue and stopword list.
+     * 
+     * @throws RemoteException if RMI setup fails
+     */
     protected QueueImp() throws RemoteException {
         super();
         this.queue = new LinkedList<>();
         this.stopwords = new ArrayList<>();
     }
 
+    /**
+     * Retrieves and removes the next URL from the queue.
+     * Waits if the queue is empty.
+     * 
+     * @return the next URL
+     * @throws RemoteException if interrupted or RMI error
+     */
     public synchronized String getURL() throws RemoteException {
         loadQueueFromFile();
         while (queue.isEmpty()) {
@@ -51,6 +73,13 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         return url;
     }
 
+    /**
+     * Adds a URL to the end of the queue, if not already present.
+     * Removes the last element if max size is exceeded.
+     * 
+     * @param url the URL to add
+     * @throws RemoteException if RMI error occurs
+     */
     public synchronized void addURL(String url) throws RemoteException {
         loadQueueFromFile();
         if (!queue.contains(url)) {
@@ -65,6 +94,13 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         }
     }
 
+    /**
+     * Adds a URL to the front of the queue, if not already present.
+     * Removes the last element if max size is exceeded.
+     * 
+     * @param url the URL to add to the front
+     * @throws RemoteException if RMI error occurs
+     */
     public synchronized void addFirst(String url) throws RemoteException {
         loadQueueFromFile();
         if (!queue.contains(url)) {
@@ -79,7 +115,10 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         }
     }
 
-
+    /**
+     * Loads the current queue from the queue file.
+     * Clears the existing in-memory queue first.
+     */
     private void loadQueueFromFile() {
         queue.clear(); // Limpa a queue antes de carregar do ficheiro
         try (BufferedReader reader = new BufferedReader(new FileReader(QUEUE_FILE))) {
@@ -92,6 +131,9 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         }
     }
 
+    /**
+     * Saves the current in-memory queue to the queue file.
+     */
     private void saveQueueToFile() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(QUEUE_FILE))) {
             for (String url : queue) {
@@ -103,6 +145,13 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         }
     }
 
+    /**
+     * Adds new stopwords to the stopwords list if not already present.
+     * Then saves them to file.
+     * 
+     * @param words the list of new stopwords
+     * @throws RemoteException if RMI error occurs
+     */
     public void addStopWords(List<String> words) throws RemoteException{
         loadStopWordsFromFile();
         for (String word : words) {
@@ -113,6 +162,10 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         saveStopWordsToFile();
     }
 
+    /**
+     * Loads the stopwords from the stopwords file.
+     * Clears the existing in-memory list first.
+     */
     public void loadStopWordsFromFile() {
         stopwords.clear(); // Limpa as stop words antes de carregar do ficheiro
         try (BufferedReader reader = new BufferedReader(new FileReader(STOPWORDS_FILE))) {
@@ -125,6 +178,9 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         }
     }
 
+    /**
+     * Saves the current in-memory stopwords list to the stopwords file.
+     */
     public void saveStopWordsToFile(){
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(STOPWORDS_FILE))) {
             for (String word : stopwords) {
@@ -136,6 +192,11 @@ public class QueueImp extends UnicastRemoteObject implements IQueue {
         }
     }
 
+    /**
+     * Returns the current list of stopwords after loading from file.
+     * 
+     * @return the list of stopwords
+     */
     public List<String> getStopwords() {
         loadStopWordsFromFile();
         return stopwords;

@@ -17,6 +17,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.rmi.UnmarshalException;
 
+/**
+ * The {@code Downloader} class is responsible for fetching URLs from a queue,
+ * processing their contents, and distributing indexed data to remote barrels.
+ * It also periodically synchronizes stopwords across the system.
+ *
+ * <p>This component is central to the distributed web indexing process.
+ * It connects to RMI services: {@code IQueue}, {@code IGateway}, and {@code IBarrel}.
+ *
+ */
 public class Downloader {
     private static final Logger logger = Logger.getLogger(Downloader.class.getName());
     private IQueue queue;
@@ -34,12 +43,21 @@ public class Downloader {
     private Set<String> stopWords;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
+    private static volatile boolean running = true;
+
+    /**
+     * Constructs a new {@code Downloader} instance.
+     * Initializes the local stopword set and establishes RMI connections
+     * to the queue and gateway services.
+     */
     public Downloader() {
         this.stopWords = new HashSet<>();
         conectar();
     }
 
-    // Método para carregar as propriedades a partir do arquivo config.properties
+    /**
+     * Loads configuration properties for the queue and gateway RMI services.
+     */
     private synchronized void loadProperties() {
         try {
             // Carregar as propriedades de queue-config.properties
@@ -67,6 +85,9 @@ public class Downloader {
         }
     }
 
+    /**
+     * Main processing logic: retrieves a URL from the queue and processes it if it is not already indexed.
+     */
     private void run() {
         try {
             String url = queue.getURL();
@@ -83,6 +104,25 @@ public class Downloader {
         }
     }
 
+    /**
+     * Processes the content of the given URL by downloading, parsing, and indexing its contents.
+     * <p>
+     * This method performs the following steps:
+     * <ul>
+     *     <li>Retrieves the list of registered barrels from the gateway.</li>
+     *     <li>Selects a random barrel and checks if the given URL is already indexed.</li>
+     *     <li>If not indexed, fetches the HTML content using Jsoup.</li>
+     *     <li>Extracts the title, body text, and main citation from the content.</li>
+     *     <li>Normalizes and counts word frequencies, filtering out stopwords.</li>
+     *     <li>Extracts all valid hyperlinks from the page.</li>
+     *     <li>Distributes the indexing task across all available barrels in separate threads.</li>
+     *     <li>If at least one barrel successfully indexes the URL, filters and adds discovered links to the queue.</li>
+     *     <li>If none succeeded, re-adds the original URL to the queue for future processing.</li>
+     * </ul>
+     *
+     * @param url the URL to process
+     * @throws RemoteException if a remote communication error occurs during barrel interaction
+     */
     private synchronized void processContent(String url) throws RemoteException {
         this.barrels = this.gateaway.getBarrels();
         Random random = new Random();
@@ -173,6 +213,12 @@ public class Downloader {
         }
     }
 
+    /**
+     * Normalizes and tokenizes text, removing punctuation and diacritics, and counts word frequencies.
+     *
+     * @param text the input text
+     * @return a map of word frequencies excluding stopwords
+     */
     private Map<String, Integer> normalizeWords(String text) {
         text = Normalizer.normalize(text, Normalizer.Form.NFD);
         text = text.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
@@ -188,7 +234,9 @@ public class Downloader {
         return frequenciaPalavras;
     }
 
-    // Start the periodic stop words updater
+    /**
+     * Periodically fetches updated stopwords from a random barrel and synchronizes them with the queue.
+     */
     private void stopWordsUpdater() {
         // Setting the time for each stop word catch
         int time = 1;
@@ -229,7 +277,9 @@ public class Downloader {
         }, time, time, TimeUnit.MINUTES);
     }
     
-
+    /**
+     * Connects to the RMI services for queue and gateway.
+     */
     public void conectar() {
         try {
             loadProperties();
@@ -240,11 +290,19 @@ public class Downloader {
         }
     }
 
+    /**
+     * Shuts down the scheduled stopword synchronization task.
+     */
     public void shutdown() {
         scheduler.shutdownNow();
     }
 
-    private static volatile boolean running = true;
+    /**
+     * The entry point of the Downloader application. Starts multiple downloader threads and handles graceful shutdown.
+     *
+     * @param args command-line arguments (not used)
+     * @throws InterruptedException if thread is interrupted
+     */
     public static void main(String[] args) throws InterruptedException {
         int numDownloaders = 1;
 

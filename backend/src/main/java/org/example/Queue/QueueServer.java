@@ -6,9 +6,23 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+/**
+ * Starts the RMI server for the Queue service.
+ * 
+ * Loads configuration from a properties file and registers the Queue implementation
+ * with the RMI registry using the specified host, port, and service name.
+ * 
+ * This class is intended to be run as a standalone Java application.
+ * 
+ */
 public class QueueServer {
     private static final String CONFIG_FILE = "backend/src/main/java/org/example/Properties/queue.properties";
 
+    /**
+     * Entry point for starting the Queue RMI server.
+     * 
+     * @param args command-line arguments (not used)
+     */
     public static void main(String[] args) {
         try {
             // Carregar configurações do ficheiro properties

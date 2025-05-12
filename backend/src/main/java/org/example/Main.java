@@ -15,6 +15,13 @@ import java.util.Scanner;
 
 import org.example.common.*;
 
+/**
+ * Main class representing the client interface for interacting with the distributed search engine system.
+ * Connects to the Gateway via RMI, provides a command-line interface for user interaction,
+ * and displays administrative statistics when requested.
+ * 
+ * Implements the IStatistics interface to receive real-time updates.
+ */
 public class Main extends UnicastRemoteObject implements IStatistics {
 
     private static final String LINE_BREAK = "=".repeat(30);
@@ -26,11 +33,22 @@ public class Main extends UnicastRemoteObject implements IStatistics {
 
     private int menuOption;
 
+     /**
+     * Default constructor that sets up the scanner for user input.
+     * 
+     * @throws RemoteException if RMI setup fails
+     */
     public Main() throws RemoteException {
         super();
         this.scanner = new Scanner(System.in);
     }
 
+    /**
+     * Entry point of the application. Connects to the RMI registry, initializes the client,
+     * registers for statistics updates, and handles menu-driven user interaction.
+     *
+     * @param args command-line arguments (unused)
+     */
     public static void main(String[] args) {
 
         System.out.println(LINE_BREAK);
@@ -75,8 +93,11 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         }
     }
 
+    /**
+     * Displays the administrative statistics page. Continuously fetches and prints system stats
+     * until the user chooses to exit.
+     */
     private void openAdministrativePage() {
-
         while (true) {
             try {
                 SystemStatistics stats = gateway.getStatistics();  // Request stats from the Gateway
@@ -115,6 +136,12 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         isAdminPageOpen = false;
     }
 
+    /**
+     * Loads configuration properties from the gateway.properties file.
+     *
+     * @return Properties loaded from the config file
+     * @throws IOException if file cannot be read
+     */
     private Properties loadProperties() throws IOException {
         Properties properties = new Properties();
         try (FileInputStream fis = new FileInputStream(CONFIG_FILE)) {
@@ -123,6 +150,11 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         return properties;
     }
 
+    /**
+     * Displays the main user menu and returns the selected option.
+     *
+     * @return selected menu option as an integer
+     */
     private int showMenu() {
         int returnValue = -1;
 
@@ -151,6 +183,12 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         return returnValue;
     }
 
+    /**
+     * Handles user-selected menu actions such as insert, search, consult, or admin view.
+     *
+     * @param option selected menu option
+     * @throws RemoteException if RMI communication fails
+     */
     private void handleMenuOption(int option) throws RemoteException {
         switch (option) {
             case 1:
@@ -176,6 +214,10 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         }
     }
 
+    /**
+     * Prompts user to input a URL and inserts it into the system.
+     * Asks if the URL should be prioritized for immediate processing.
+     */
     private void insertURL() {
         try {
             String url = readURL();
@@ -202,7 +244,26 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         }
     }
     
-
+    /**
+     * <p>Performs a search based on the user's input search query. The method processes the 
+     * search query by filtering out stopwords, normalizing the text, and sending the filtered 
+     * terms to the Gateway for searching. The results are then paginated and displayed to the user. 
+     * The user can navigate through the results pages.</p>
+     *
+     * <ul>
+     *     <li>Filters out stopwords (commonly ignored words) before performing the search.</li>
+     *     <li>Normalizes the search query by removing diacritical marks, punctuation, and converting 
+     *         to lowercase.</li>
+     *     <li>Allows the user to view search results page by page with navigation options to go to 
+     *         the next or previous page.</li>
+     * </ul>
+     *
+     * <p>If no results are found or if the user inputs an invalid query, appropriate messages are displayed.</p>
+     *
+     * <p>The method handles RMI exceptions during communication with the Gateway.</p>
+     * 
+     * @throws RemoteException if there is a communication issue with the Gateway during the search process.
+     */
     private void performSearch() {
         try {
             String searchQuery = readSearch();
@@ -288,6 +349,21 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         }
     }
 
+    /**
+     * <p>Prompts the user to input a URL and retrieves a list of connected URLs associated with it.
+     * The method validates the URL format before sending a request to the Gateway for connection information.
+     * The connections are then printed for the user. The user can return to the menu by entering '0'.</p>
+     *
+     * <ul>
+     *     <li>Validates the format of the input URL to ensure it's in the correct format (using regex).</li>
+     *     <li>If valid, it requests the connected URLs from the Gateway and displays them to the user.</li>
+     *     <li>If the URL is invalid or no connections are found, appropriate messages are displayed.</li>
+     * </ul>
+     * 
+     * <p>The method handles exceptions that may occur during communication with the Gateway or input processing.</p>
+     *
+     * @throws RemoteException if there is an error while interacting with the Gateway during URL connection retrieval.
+     */
     private void consultURLConnections() {
         System.out.println("Input a URL or enter 0 to return:");
         String input = scanner.nextLine().trim();
@@ -321,6 +397,11 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         }
     }
 
+    /**
+     * Prompts the user to input a valid URL or exit.
+     *
+     * @return a valid URL string or null to cancel
+     */
     private String readURL() {
         try {
             System.out.println("Input a URL or enter 0 to return:");
@@ -339,11 +420,22 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         return readURL();
     }
 
+    /**
+     * Validates the format of a URL string.
+     *
+     * @param url the URL to validate
+     * @return true if the URL is valid, false otherwise
+     */
     private boolean isValidURL(String url) {
         String regex = "^(https?|ftp)://[^\s/$.?#].[^\s]*$";
         return url.matches(regex);
     }
 
+    /**
+     * Prompts the user to input search terms.
+     *
+     * @return the entered search string or null on input error
+     */
     private String readSearch() {
         try {
             System.out.print("Search terms: ");
@@ -354,12 +446,35 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         }
     }
 
+    /**
+     * Handles client disconnection and application shutdown.
+     */
     private void disconnect() {
         System.out.println(LINE_BREAK);
         System.out.println("Client disconnected successfully.");
         System.exit(0);
     }
 
+    /**
+     * <p>Callback method that updates the statistics display on the client when called by the Gateway.
+     * The method is triggered to refresh the administrative statistics, displaying current data such as:</p>
+     *
+     * <ul>
+     *     <li>Top 10 most searched terms.</li>
+     *     <li>Active barrels and their sizes.</li>
+     *     <li>Average response times for each barrel.</li>
+     * </ul>
+     *
+     * <p>The method ensures that statistics are fetched from the Gateway if the administrative page is open, 
+     * and prints the updated statistics to the console. It also provides a mechanism to gracefully handle any 
+     * RemoteException that may occur when fetching the statistics.</p>
+     *
+     * <p>If no statistics are available or if there is an issue with fetching the data, an appropriate message 
+     * will be displayed to the user.</p>
+     *
+     * @param stats the system statistics object containing the data to be displayed.
+     * @throws RemoteException if there is a failure during RMI communication while retrieving statistics from the Gateway.
+     */
     public synchronized void updateStatistics(SystemStatistics stats) throws RemoteException {
 
         if (isAdminPageOpen) { 
@@ -380,6 +495,12 @@ public class Main extends UnicastRemoteObject implements IStatistics {
         }
     }
 
+    /**
+     * Normalizes input text by removing diacritical marks, punctuation, and converting to lowercase.
+     *
+     * @param text the input text to normalize
+     * @return normalized version of the text
+     */
     private String normalizeWords(String text) {
         text = Normalizer.normalize(text, Normalizer.Form.NFD);
         text = text.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");

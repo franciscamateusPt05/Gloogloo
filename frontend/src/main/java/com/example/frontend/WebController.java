@@ -1,6 +1,7 @@
 package com.example.frontend;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.rmi.RemoteException;
 import java.lang.String;
@@ -26,25 +27,56 @@ import org.example.common.IGateway;
 import org.example.common.SystemStatistics;
 import org.example.common.SearchResult;
 
+/**
+ * <p>Main Spring MVC controller for handling web requests related to search, URL insertion,
+ * OpenAI integration, and system statistics.</p>
+ *
+ * <p>This controller interacts with an RMI backend service (via {@link IGateway}) to perform search operations,
+ * retrieve statistics, and insert URLs into the system queue. It also manages view rendering, session state, and WebSocket messaging.</p>
+ *
+ * <p>Session attributes:</p>
+ * <ul>
+ *   <li><b>searchCache</b>: Cached search results for pagination and re-rendering</li>
+ *   <li><b>inputCache</b>: Last user input for search</li>
+ *   <li><b>openaiCache</b>: Cached result from OpenAI (if enabled)</li>
+ *   <li><b>ResultOpenAICache</b>: Flag to track OpenAI result state</li>
+ * </ul>
+ */
 @Controller
 @SessionAttributes({"searchCache", "inputCache", "openaiCache", "ResultOpenAICache"})
 public class WebController {
 
+    /**
+     * Initializes session attribute for storing cached search results.
+     * @return an empty list of search results.
+     */
     @ModelAttribute("searchCache")
     public List<SearchResult> searchCache() {
         return new ArrayList<>();
     }
 
+    /**
+     * Initializes session attribute for storing the last input query.
+     * @return an empty string.
+     */
     @ModelAttribute("inputCache")
     public String inputCache() {
         return "";
     }
 
+    /**
+     * Initializes session attribute for caching OpenAI result.
+     * @return an empty string.
+     */
     @ModelAttribute("openaiCache")
     public String openaiCache() {
         return "";
     }
 
+    /**
+     * Initializes session attribute for tracking OpenAI checkbox state.
+     * @return "off" by default.
+     */
     @ModelAttribute("ResultOpenAICache")
     public String ResultOpenAICache() {
         return "off";
@@ -55,6 +87,9 @@ public class WebController {
 
     private IGateway gateway;
 
+    /**
+     * Initializes the controller by retrieving the gateway from the RMI client.
+     */
     @PostConstruct
     public void init() {
         // Initialize the gateway after RmiClientService is autowired
@@ -64,17 +99,30 @@ public class WebController {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-
+    /**
+     * Redirects root URL to the main index page.
+     * @return redirect string to /index.
+     */
     @GetMapping("/")
     public String redirect() {
         return "redirect:/index";
     }
 
+    /**
+     * Renders the insert URL form page.
+     * @return name of the insert-url template.
+     */
     @GetMapping("/insert-url")
     public String showInsertUrlPage() {
         return "insert-url";
     }
 
+    /**
+     * Handles insertion of a URL into the indexing queue.
+     * @param url The URL to insert.
+     * @param prioritize Whether to insert it at the front of the queue.
+     * @return Response indicating success or error.
+     */
     @PostMapping("/insert-url")
     @ResponseBody
     public ResponseEntity<String> insertUrl(@RequestParam String url,
@@ -102,8 +150,17 @@ public class WebController {
         }
     }
 
-
-
+    /**
+     * Displays the main search page, handles new searches, pagination,
+     * and optionally integrates OpenAI results and HackerNews URLs insertions.
+     *
+     * @param input User input string.
+     * @param page Page number for pagination.
+     * @param hackerNews Whether to include HackerNews analysis.
+     * @param ResultOpenAI Whether to request OpenAI-based results.
+     * @param model Spring model.
+     * @return view name to render.
+     */
     @GetMapping("/index")
     public String showIndexPage(@RequestParam(value = "input", required = false) String input,
                                 @RequestParam(value = "page", defaultValue = "1") Integer page,
@@ -222,6 +279,14 @@ public class WebController {
         }
     }
 
+    /**
+     * Retrieves URLs connected to a given input URL and renders the results page.
+     *
+     * @param input The input URL.
+     * @param page Page number for pagination.
+     * @param model Spring model.
+     * @return View or error message.
+     */
     @GetMapping("/url-connections")
     public Object checkConnections(@RequestParam(value = "input", required = false) String input,
                                  @RequestParam(defaultValue = "1") int page,
@@ -247,6 +312,7 @@ public class WebController {
 
             if (urls == null || urls.isEmpty()) {
                 model.addAttribute("error", "No results found for your query.");
+                urls = Collections.emptyList();
             }
 
             sendStatistics();
@@ -276,6 +342,12 @@ public class WebController {
         }
     }
 
+    /**
+     * Displays the system statistics page.
+     *
+     * @param model Spring model to inject statistics.
+     * @return Name of the statistics view template.
+     */
     @GetMapping("/statistics")
     public synchronized String showStatistics(Model model) {
         try {
@@ -296,6 +368,10 @@ public class WebController {
         return "statistics";
     }
 
+    /**
+     * Sends real-time system statistics over WebSocket to subscribed clients.
+     * Used by STOMP via @MessageMapping.
+     */
     @MessageMapping("/statistics")
     public synchronized void sendStatistics() {
         try {
@@ -309,18 +385,36 @@ public class WebController {
         }
     }
 
+    /**
+     * Displays a generic error page with optional message.
+     *
+     * @param message Optional error message.
+     * @param model Spring model to hold message.
+     * @return error page name.
+     */
     @GetMapping("/error")
     public String showErrorPage(@RequestParam(name = "message", required = false) String message, Model model) {
         model.addAttribute("errorMessage", message != null ? message : "Unknown error");
         return "error"; // assuming error.html is your template
     }
 
-
+    /**
+     * Utility method to validate if a URL is in a valid format.
+     * @param url URL string to validate.
+     * @return true if valid, false otherwise.
+     */
     private boolean isValidURL(String url) {
         String regex = "^(https?|ftp)://[^\s/$.?#].[^\s]*$";
         return url.matches(regex);
     }
 
+    /**
+     * Utility method to normalize and clean a user input string:
+     * remove accents, punctuation, and convert to lowercase.
+     *
+     * @param text Input text.
+     * @return Normalized text.
+     */
     private String normalizeWords(String text) {
         text = Normalizer.normalize(text, Normalizer.Form.NFD);
         text = text.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
